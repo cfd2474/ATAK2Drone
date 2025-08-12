@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    tools:context=".MainActivity">
+
+    <LinearLayout
+        android:id="@+id/layoutMain"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- 2. KML File Selection -->
+        <Button
+            android:id="@+id/btnSelectKml"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/label_select_kml"
+            android:contentDescription="@string/select_kml_file_desc"
+            android:minHeight="48dp" />
+
+        <!-- UPDATED: KML status -->
+        <TextView
+            android:id="@+id/textViewKmlStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/kml_not_loaded"
+            android:textColor="#F60000"
+            android:paddingTop="8dp"
+            android:contentDescription="@string/kml_status_desc" />
+
+        <!-- 1. Mission Name (with info icon) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <EditText
+                android:id="@+id/editTextMissionName"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/hint_mission_name"
+                android:inputType="textNoSuggestions"
+                android:maxLength="32"
+                android:digits="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-"
+                android:importantForAutofill="yes"
+                android:autofillHints="username"
+                android:contentDescription="@string/mission_name_desc"
+                android:minHeight="48dp" />
+
+            <ImageView
+                android:id="@+id/iconMissionNameHelp"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginStart="8dp"
+                android:contentDescription="@string/mission_name_desc"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="2dp"
+                android:src="@drawable/ic_info_24" />
+        </LinearLayout>
+
+        <!-- 0. Destination selection (required first) -->
+        <Button
+            android:id="@+id/btnSelectDestination"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/label_select_destination"
+            android:contentDescription="@string/select_destination_desc"
+            android:minHeight="48dp" />
+
+        <TextView
+            android:id="@+id/textViewDestinationPath"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/label_no_destination"
+            android:paddingTop="8dp"
+            android:importantForAccessibility="yes" />
+
+        <!-- 3. Altitude Presets -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/label_altitude"
+            android:layout_marginTop="12dp"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/radioGroupAltitude"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/radioAlt200"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_altitude_200" />
+
+            <RadioButton
+                android:id="@+id/radioAlt400"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_altitude_400" />
+        </RadioGroup>
+
+        <!-- 5. Camera Type Options -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/label_camera"
+            android:layout_marginTop="12dp"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/radioGroupCamera"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <RadioButton
+                android:id="@+id/radioCameraEO"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_camera_eo" />
+
+            <RadioButton
+                android:id="@+id/radioCameraIR"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_camera_ir" />
+
+            <RadioButton
+                android:id="@+id/radioCameraBoth"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_camera_both" />
+        </RadioGroup>
+
+        <!-- 6. Generate Button -->
+        <Button
+            android:id="@+id/btnGenerate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/label_generate_wpml"
+            android:contentDescription="@string/generate_wpml_desc"
+            android:enabled="false"
+            android:layout_marginTop="16dp"
+            android:minHeight="48dp" />
+
+        <!-- 7. Note at bottom -->
+        <TextView
+            android:id="@+id/textViewNote"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Application generates flight plan for Mavic 3T. If using a different aircraft, change parameters in DJI application. Created by Mike Leckliter for the Corona Fire Department."
+            android:textSize="12sp"
+            android:textColor="@android:color/darker_gray"
+            android:gravity="center"
+            android:layout_marginTop="24dp"
+            android:padding="8dp" />
+
+    </LinearLayout>
+</ScrollView>

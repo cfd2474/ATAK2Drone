@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Internal app storage -->
+    <files-path name="internal_files" path="." />
+
+    <!-- Entire external storage access (not specific) -->
+    <external-path name="external_files" path="." />
+
+    <!-- Direct access to ATAK export folder -->
+    <external-path name="atak_export" path="atak/export/" />
+</paths>

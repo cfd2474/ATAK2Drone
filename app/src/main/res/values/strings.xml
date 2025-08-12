@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App name -->
+    <string name="app_name">ATAK2Drone</string>
+
+    <!-- Destination (new) -->
+    <string name="label_select_destination">Select Destination Folder</string>
+    <string name="label_no_destination">No destination selected</string>
+    <string name="destination_selected">Destination: %1$s</string>
+    <string name="select_destination_desc">Button to select a destination folder to save the generated KMZ</string>
+    <string name="error_no_destination">Please select a destination folder</string>
+
+    <!-- KML File UI -->
+    <string name="label_select_kml">Select Input KML File</string>
+    <string name="label_no_kml">No KML file selected</string>
+    <string name="kml_loaded">KML Loaded: %1$s</string>
+    <string name="kml_invalid">Invalid KML file</string>
+    <string name="kml_ready">KML Ready</string>
+
+    <!-- Mission Parameters -->
+    <string name="hint_mission_name">Enter Mission Name (NO SPACES)</string>
+
+    <string name="label_camera">Camera Type</string>
+    <string name="label_camera_eo">EO</string>
+    <string name="label_camera_ir">IR</string>
+    <string name="label_camera_both">Both</string>
+    <string name="label_generate_wpml">Generate Flight KMZ</string>
+
+    <!-- Accessibility descriptions -->
+    <string name="kml_status_desc">Displays the status of the selected KML file</string>
+    <string name="select_kml_file_desc">Button to select a KML file</string>
+    <string name="mission_name_desc">Input for mission name</string>
+    <string name="altitude_desc">Select flight altitude</string>
+    <string name="generate_wpml_desc">Button to generate WPML flight plan</string>
+
+    <!-- Error messages -->
+    <string name="error_invalid_name">Invalid mission name</string>
+    <string name="error_invalid_altitude">Altitude must be between 0 and 400 ft</string>
+    <string name="error_invalid_camera">Camera type not selected</string>
+    <string name="error_invalid_polygon">Invalid polygon geometry</string>
+
+    <!-- Toasts -->
+    <string name="toast_invalid_kml">Selected file is not a valid KML</string>
+    <string name="toast_wpml_success">WPML KMZ file generated successfully</string>
+    <string name="toast_wpml_failure">Failed to generate WPML KMZ file</string>
+
+    <string name="label_altitude">Altitude</string>
+    <string name="label_altitude_200">200 ft</string>
+    <string name="label_altitude_400">400 ft</string>
+    <string name="error_invalid_altitude_selection">Please select an altitude</string>
+
+    <!-- Defaults -->
+    <string name="default_altitude">200</string>
+    <!-- KML status strings -->
+    <string name="kml_not_loaded">KML Not Loaded</string>
+
+</resources>
