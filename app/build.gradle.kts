@@ -8,7 +8,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.example.atak2drone"
+        applicationId = "com.example.atak2drone" // overridden by flavors below
         minSdk = 26
         targetSdk = 36
         versionCode = 1
@@ -29,6 +29,7 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true   // needed for flavor buildConfigField
     }
 
     compileOptions {
@@ -38,6 +39,43 @@ android {
 
     kotlinOptions {
         jvmTarget = "11"
+    }
+
+    // Product flavors so multiple aircraft builds can coexist
+    flavorDimensions += "drone"
+
+    productFlavors {
+        create("mavic3t") {
+            dimension = "drone"
+            applicationId = "com.taksolutions.atak2drone.m3t"
+            versionNameSuffix = "-m3t"
+            resValue("string", "app_name", "ATAK2Drone • M3T")
+
+            buildConfigField("int", "DRONE_ENUM", "77")
+            buildConfigField("int", "PAYLOAD_ENUM", "67")
+        }
+
+        create("matrice300m350") {
+            dimension = "drone"
+            applicationId = "com.taksolutions.atak2drone.m300m350"
+            versionNameSuffix = "-m300m350"
+            resValue("string", "app_name", "ATAK2Drone • M300/M350")
+
+            buildConfigField("int", "DRONE_ENUM", "999")
+            buildConfigField("int", "PAYLOAD_ENUM", "998")
+        }
+
+        // NEW: M4T flavor
+        create("m4t") {
+            dimension = "drone"
+            applicationId = "com.taksolutions.atak2drone.m4t"
+            versionNameSuffix = "-m4t"
+            resValue("string", "app_name", "ATAK2Drone • M4T")
+
+            // TODO: replace with real DJI enum values for M4T when known
+            buildConfigField("int", "DRONE_ENUM", "1001")
+            buildConfigField("int", "PAYLOAD_ENUM", "1000")
+        }
     }
 }
 
