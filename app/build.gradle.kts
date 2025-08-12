@@ -50,7 +50,7 @@ android {
             dimension = "drone"
             applicationId = "com.taksolutions.atak2drone.m3t"
             versionNameSuffix = "-m3t"
-            resValue("string", "app_name", "ATAK2Drone • M3T")
+            resValue("string", "app_name", "ATAK2M3T")
 
             buildConfigField("int", "DRONE_ENUM", "77")
             buildConfigField("int", "PAYLOAD_ENUM", "67")
@@ -60,7 +60,7 @@ android {
             dimension = "drone"
             applicationId = "com.taksolutions.atak2drone.m300m350"
             versionNameSuffix = "-m300m350"
-            resValue("string", "app_name", "ATAK2Drone • M300/M350")
+            resValue("string", "app_name", "ATAK2M300/M350")
 
             buildConfigField("int", "DRONE_ENUM", "999")
             buildConfigField("int", "PAYLOAD_ENUM", "998")
@@ -71,7 +71,7 @@ android {
             dimension = "drone"
             applicationId = "com.taksolutions.atak2drone.m4t"
             versionNameSuffix = "-m4t"
-            resValue("string", "app_name", "ATAK2Drone • M4T")
+            resValue("string", "app_name", "ATAK2M4T")
 
             // TODO: replace with real DJI enum values for M4T when known
             buildConfigField("int", "DRONE_ENUM", "1001")
