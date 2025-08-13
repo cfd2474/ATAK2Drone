@@ -38,7 +38,6 @@ object WpmlGenerator {
         if (!outDir.exists()) outDir.mkdirs()
         val outKmz = File(outDir.parentFile ?: outDir, "$missionName.kmz")
 
-        // choose template by bucket and camera
         val bucket = pickAltitudeBucket(altitudeMeters)
         val templateAsset = pickTemplateAsset(cameraType, bucket)
 
@@ -51,7 +50,7 @@ object WpmlGenerator {
         }
 
         try {
-            // ---- 1) WAYLINES.WPML ----
+            // 1) waylines.wpml
             val waylines = locateWaylines(tmpDir)
             val doc = parseXml(waylines)
 
@@ -61,17 +60,7 @@ object WpmlGenerator {
                 for (i in 0 until nodes.length) nodes.item(i).textContent = value
             }
 
-            // Aircraft / payload (M3T family)
-            setAllTexts("droneEnumValue", "77")
-            setAllTexts("payloadEnumValue", "67")
-            val sub = when (cameraType) {
-                CameraType.EO   -> "0"
-                CameraType.IR   -> "2"
-                CameraType.BOTH -> "2"
-            }
-            setAllTexts("payloadSubEnumValue", sub)
-
-            // Heights (meters)
+            // use whatever your template encodes for aircraft/payload; keep minimal tweaks
             val h = String.format("%.3f", altitudeMeters)
             setAllTexts("executeHeight", h)
             setAllTexts("executeHeightMode", "relativeToStartPoint")
@@ -84,19 +73,15 @@ object WpmlGenerator {
             setAllTexts("goHomeHeight", h)
             normalizeAllHeights(doc, h)
 
-            // Replace Placemarks in embedded KML inside waylines.wpml
+            // IMPORTANT: preserve wpml structure; only update coords + index
             replaceFolderPlacemarksInDoc(doc, polygon)
 
-            // Save back
             saveXml(doc, waylines)
 
-            // ---- 2) ANY KML/KMZ ARTIFACTS IN TEMPLATE ----
-            // Rewrite coordinates in:
-            //   - *.kml files (e.g., template.kml, doc.kml)
-            //   - *.kmz files (e.g., template.kmz) by opening and rewriting inner KML
+            // 2) sync any visible template .kml / inner .kmz polygons to match
             rewriteAllTemplateKmls(tmpDir, polygon)
 
-            // ---- 3) Rezip ----
+            // 3) rezip
             zipDir(tmpDir, outKmz)
             return outKmz.takeIf { it.exists() && it.length() > 0 }
         } catch (e: Exception) {
@@ -107,47 +92,93 @@ object WpmlGenerator {
         }
     }
 
-    // ---------- Coordinate writers ----------
+    // ---------- NEW: clone-based Placemark rewriting (preserves wpml children) ----------
 
     private fun replaceFolderPlacemarksInDoc(doc: Document, polygon: List<Any>) {
         val folders = doc.getElementsByTagNameNS(KML_NS, "Folder")
         if (folders.length == 0) return
         val folder = folders.item(0) as Element
 
-        // remove old Placemarks
-        val toRemove = mutableListOf<Element>()
+        // Find an existing Placemark with a Point/coordinates to use as a prototype
+        val existing = mutableListOf<Element>()
         val children = folder.childNodes
         for (i in 0 until children.length) {
             val n = children.item(i)
             if (n is Element && n.namespaceURI == KML_NS && n.localName == "Placemark") {
-                toRemove.add(n)
+                existing.add(n)
             }
         }
-        toRemove.forEach { folder.removeChild(it) }
+        val prototype = existing.firstOrNull { pm ->
+            val point = firstChildByLocalName(pm, KML_NS, "Point")
+            val coords = point?.let { firstChildByLocalName(it, KML_NS, "coordinates") }
+            coords != null
+        }
 
-        // add new Placemarks for each vertex
+        if (prototype == null) {
+            // Fallback (shouldn’t happen with valid templates): don’t strip wpml structure,
+            // just append simple Placemarks (may still be rejected by Pilot).
+            Log.w(TAG, "No prototype Placemark with Point/coordinates found; using minimal KML points.")
+            existing.forEach { folder.removeChild(it) }
+            polygon.forEachIndexed { idx, any ->
+                val (lat, lon) = readLatLon(any)
+                val placemark = doc.createElementNS(KML_NS, "Placemark")
+                val name = doc.createElementNS(KML_NS, "name").apply { textContent = "WP ${idx + 1}" }
+                val point = doc.createElementNS(KML_NS, "Point")
+                val coords = doc.createElementNS(KML_NS, "coordinates").apply {
+                    textContent = String.format("%.7f,%.7f", lon, lat)
+                }
+                point.appendChild(coords)
+                placemark.appendChild(name)
+                placemark.appendChild(point)
+                folder.appendChild(placemark)
+            }
+            return
+        }
+
+        // Remove all current Placemarks so we can rebuild cleanly
+        existing.forEach { folder.removeChild(it) }
+
+        // Build new Placemarks by cloning the prototype and updating just coords/name/wpml:index
         polygon.forEachIndexed { idx, any ->
             val (lat, lon) = readLatLon(any)
-            val placemark = doc.createElementNS(KML_NS, "Placemark")
-            val name = doc.createElementNS(KML_NS, "name").apply { textContent = "WP ${idx + 1}" }
-            val point = doc.createElementNS(KML_NS, "Point")
-            val coords = doc.createElementNS(KML_NS, "coordinates").apply {
-                textContent = String.format("%.7f,%.7f", lon, lat) // lon,lat
+            val clone = prototype.cloneNode(true) as Element
+
+            // <name>WP N</name> (if present)
+            firstChildByLocalName(clone, KML_NS, "name")?.apply {
+                textContent = "WP ${idx + 1}"
             }
-            point.appendChild(coords)
-            placemark.appendChild(name)
-            placemark.appendChild(point)
-            folder.appendChild(placemark)
+
+            // <Point><coordinates>lon,lat[,alt]</coordinates></Point>
+            firstChildByLocalName(clone, KML_NS, "Point")?.let { pt ->
+                firstChildByLocalName(pt, KML_NS, "coordinates")?.apply {
+                    textContent = String.format("%.7f,%.7f", lon, lat)
+                }
+            }
+
+            // <wpml:index>i</wpml:index> (if present in template)
+            firstChildByLocalName(clone, WP_NS, "index")?.apply {
+                textContent = idx.toString()
+            }
+
+            // Keep all other wpml:* children untouched (gimbal actions, speeds, etc.)
+            folder.appendChild(clone)
         }
     }
 
-    /**
-     * Update the FIRST polygon LinearRing/coordinates in a KML DOM to match 'polygon'.
-     * If not found, falls back to the first <coordinates> anywhere.
-     */
+    private fun firstChildByLocalName(parent: Element, ns: String, local: String): Element? {
+        val list = parent.getElementsByTagNameNS(ns, local)
+        for (i in 0 until list.length) {
+            val el = list.item(i) as? Element ?: continue
+            // ensure it's a direct or nested child; for our usage any descendant is fine
+            return el
+        }
+        return null
+    }
+
+    // ---------- KML polygon rewriter (unchanged) ----------
+
     private fun updateFirstPolygonCoordinates(doc: Document, polygon: List<Any>): Boolean {
         val coordText = buildKmlCoordinatesText(polygon)
-        // Try Polygon -> LinearRing -> coordinates
         val rings = doc.getElementsByTagNameNS(KML_NS, "LinearRing")
         for (i in 0 until rings.length) {
             val ring = rings.item(i) as Element
@@ -157,7 +188,6 @@ object WpmlGenerator {
                 return true
             }
         }
-        // Fallback: first coordinates anywhere
         val allCoords = doc.getElementsByTagNameNS(KML_NS, "coordinates")
         if (allCoords.length > 0) {
             (allCoords.item(0) as Element).textContent = "\n$coordText\n"
@@ -170,14 +200,12 @@ object WpmlGenerator {
         val sb = StringBuilder()
         polygon.forEach { any ->
             val (lat, lon) = readLatLon(any)
-            // KML: lon,lat,alt
             sb.append(String.format("  %.7f,%.7f,0\n", lon, lat))
         }
         return sb.toString().trimEnd()
     }
 
     private fun rewriteAllTemplateKmls(root: File, polygon: List<Any>) {
-        // 1) Update plain .kml files
         root.walkTopDown()
             .filter { it.isFile && it.extension.equals("kml", ignoreCase = true) }
             .forEach { kmlFile ->
@@ -191,7 +219,6 @@ object WpmlGenerator {
                 }
             }
 
-        // 2) Update nested .kmz files (e.g., template.kmz)
         root.walkTopDown()
             .filter { it.isFile && it.extension.equals("kmz", ignoreCase = true) }
             .forEach { kmzFile ->
@@ -204,15 +231,10 @@ object WpmlGenerator {
             }
     }
 
-    /**
-     * Reads a KMZ, replaces first polygon coordinates inside the first found KML (prefer doc.kml),
-     * and returns new KMZ bytes.
-     */
     private fun rewriteInnerKmzPolygon(kmzBytes: ByteArray, polygon: List<Any>): ByteArray {
-        // Read in-memory, collect entries
         data class EntryData(val name: String, val bytes: ByteArray)
         val entries = mutableListOf<EntryData>()
-        var preferredIndex = -1 // index of doc.kml if found
+        var preferredIndex = -1
 
         ZipInputStream(ByteArrayInputStream(kmzBytes)).use { zis ->
             var e = zis.nextEntry
@@ -228,11 +250,9 @@ object WpmlGenerator {
             }
         }
 
-        // Find target KML entry
-        val kmlIndex = when {
-            preferredIndex >= 0 -> preferredIndex
-            else -> entries.indexOfFirst { it.name.lowercase().endsWith(".kml") }
-        }
+        val kmlIndex = if (preferredIndex >= 0) preferredIndex
+        else entries.indexOfFirst { it.name.lowercase().endsWith(".kml") }
+
         if (kmlIndex >= 0) {
             val kmlDoc = parseXml(ByteArrayInputStream(entries[kmlIndex].bytes))
             if (updateFirstPolygonCoordinates(kmlDoc, polygon)) {
@@ -240,7 +260,6 @@ object WpmlGenerator {
             }
         }
 
-        // Write back to KMZ
         val baos = ByteArrayOutputStream()
         ZipOutputStream(baos).use { zos ->
             entries.forEach { ed ->
@@ -252,7 +271,7 @@ object WpmlGenerator {
         return baos.toByteArray()
     }
 
-    // ---------- Helpers: waylines locate/parse/save ----------
+    // ---------- locate/parse/save (unchanged) ----------
 
     private fun locateWaylines(tmpDir: File): File {
         val candidate = listOf(
@@ -294,7 +313,7 @@ object WpmlGenerator {
         return baos.toByteArray()
     }
 
-    // ---------- Height normalizer ----------
+    // ---------- Height normalizer (unchanged) ----------
 
     private fun normalizeAllHeights(doc: Document, metersStr: String) {
         fun fixNode(node: Node) {
@@ -325,7 +344,7 @@ object WpmlGenerator {
         fixNode(doc.documentElement)
     }
 
-    // ---------- Asset I/O & zipping ----------
+    // ---------- Assets & zipping (unchanged) ----------
 
     private fun unzipAssetToDir(context: Context, assetPath: String, outDir: File) {
         context.assets.open(assetPath).use { ins ->
@@ -362,7 +381,7 @@ object WpmlGenerator {
         }
     }
 
-    // ---------- Misc ----------
+    // ---------- Misc (unchanged) ----------
 
     private fun pickAltitudeBucket(altitudeMeters: Double): AltBucket {
         val ft = altitudeMeters / 0.3048
@@ -382,7 +401,6 @@ object WpmlGenerator {
         return "$baseDir/$file"
     }
 
-    /** Reflection reader for lat/lon: lat/latitude/latDeg + lon/lng/long/longitude */
     private fun readLatLon(obj: Any): Pair<Double, Double> {
         fun read(names: List<String>): Double {
             val c = obj.javaClass
