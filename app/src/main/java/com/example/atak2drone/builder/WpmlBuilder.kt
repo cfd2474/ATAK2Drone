@@ -69,8 +69,10 @@ class WpmlBuilder(
             // Configure drone & payload enums if available from BuildConfig
             try {
                 val droneEnum = BuildConfig.DRONE_ENUM
+                val droneSubEnum = BuildConfig.DRONE_SUB_ENUM
                 val payloadEnum = BuildConfig.PAYLOAD_ENUM
                 if (droneEnum > 0) setAllTexts(doc, "droneEnumValue", droneEnum.toString())
+                if (droneSubEnum > 0) setAllTexts(doc, "droneSubEnumValue", droneSubEnum.toString())
                 if (payloadEnum > 0) setAllTexts(doc, "payloadEnumValue", payloadEnum.toString())
             } catch (_: Throwable) {
                 // BuildConfig fields may not be present in pure test harness
