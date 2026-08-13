@@ -55,6 +55,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var radioCameraBoth: RadioButton
 
     private lateinit var btnGenerate: Button
+    private lateinit var textViewMissingRequirements: TextView
     private lateinit var textViewMetricsSummary: TextView
 
     private var pickedKmlUri: Uri? = null
@@ -181,6 +182,7 @@ class MainActivity : AppCompatActivity() {
         radioCameraBoth = findViewById(R.id.radioCameraBoth)
 
         btnGenerate = findViewById(R.id.btnGenerate)
+        textViewMissingRequirements = findViewById(R.id.textViewMissingRequirements)
         textViewMetricsSummary = findViewById(R.id.textViewMetricsSummary)
     }
 
@@ -357,12 +359,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateGenerateEnabled() {
-        btnGenerate.isEnabled =
-            pickedKmlUri != null &&
-                    polygonLooksValid &&
-                    destTreeUri != null &&
-                    missionNameValid() &&
-                    altitudeValid()
+        val missing = mutableListOf<String>()
+        if (pickedKmlUri == null || !polygonLooksValid) {
+            missing.add("Select KML")
+        }
+        if (!missionNameValid()) {
+            missing.add("Name output (no spaces)")
+        }
+        if (destTreeUri == null) {
+            missing.add("Select destination")
+        }
+        if (!altitudeValid()) {
+            missing.add("Valid altitude (20–400 ft)")
+        }
+
+        if (missing.isEmpty()) {
+            btnGenerate.isEnabled = true
+            textViewMissingRequirements.visibility = View.GONE
+        } else {
+            btnGenerate.isEnabled = false
+            textViewMissingRequirements.text = "⚠️ Required: " + missing.joinToString(" • ")
+            textViewMissingRequirements.visibility = View.VISIBLE
+        }
     }
 
     // ---- Generate ----

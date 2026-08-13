@@ -285,6 +285,18 @@
             android:layout_marginTop="16dp"
             android:minHeight="48dp" />
 
+        <!-- Missing Criteria Warning Text (shown while btnGenerate is greyed out) -->
+        <TextView
+            android:id="@+id/textViewMissingRequirements"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#C62828"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginTop="4dp"
+            android:text="⚠️ Required: Select KML • Name output • Select destination" />
+
         <!-- Optimization / Plan Summary Card -->
         <TextView
             android:id="@+id/textViewMetricsSummary"
