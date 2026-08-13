@@ -1,21 +1,34 @@
-# ATAK2Drone — Public Signed Release APKs
+# ATAK2Drone — Public Signed Releases
 
-This directory contains digitally signed, production-ready release builds of **ATAK2Drone** for each supported DJI enterprise aircraft variant.
+This directory manages digitally signed, production-ready release builds of **ATAK2Drone** for each supported DJI enterprise aircraft variant.
 
 ---
 
-## Release Variants
+## Current Release: **v2.0.2**
 
-| Aircraft Series | Application ID | APK Package | Size | Target Drone / Payload Enums |
+Located in [`releases/current/`](./current/):
+
+| Aircraft Series | Application ID | Signed Release APK | Size | Target Drone / Payload Enums |
 |---|---|---|---|---|
-| **Matrice 30 / 30T** | `com.taksolutions.atak2drone.m30` | [`ATAK2M30-release.apk`](./ATAK2M30-release.apk) | ~5.03 MB | `DRONE_ENUM = 67`, `DRONE_SUB_ENUM = 1`, `PAYLOAD_ENUM = 53` |
-| **Mavic 3 Enterprise / 3T** | `com.taksolutions.atak2drone.m3t` | [`ATAK2M3T-release.apk`](./ATAK2M3T-release.apk) | ~5.03 MB | `DRONE_ENUM = 77`, `DRONE_SUB_ENUM = 0`, `PAYLOAD_ENUM = 67` |
-| **Matrice 300 / 350 RTK** | `com.taksolutions.atak2drone.m300m350` | [`ATAK2M300M350-release.apk`](./ATAK2M300M350-release.apk) | ~5.02 MB | `DRONE_ENUM = 999`, `DRONE_SUB_ENUM = 0`, `PAYLOAD_ENUM = 998` |
-| **Matrice 4T** | `com.taksolutions.atak2drone.m4t` | [`ATAK2M4T-release.apk`](./ATAK2M4T-release.apk) | ~5.03 MB | `DRONE_ENUM = 1001`, `DRONE_SUB_ENUM = 0`, `PAYLOAD_ENUM = 1000` |
+| **Matrice 30 / 30T** | `com.taksolutions.atak2drone.m30` | [`ATAK2M30-release.apk`](./current/ATAK2M30-release.apk) | ~5.03 MB | `DRONE_ENUM = 67`, `DRONE_SUB_ENUM = 1`, `PAYLOAD_ENUM = 53` |
+| **Mavic 3 Enterprise / 3T** | `com.taksolutions.atak2drone.m3t` | [`ATAK2M3T-release.apk`](./current/ATAK2M3T-release.apk) | ~5.03 MB | `DRONE_ENUM = 77`, `DRONE_SUB_ENUM = 0`, `PAYLOAD_ENUM = 67` |
+| **Matrice 300 / 350 RTK** | `com.taksolutions.atak2drone.m300m350` | [`ATAK2M300M350-release.apk`](./current/ATAK2M300M350-release.apk) | ~5.02 MB | `DRONE_ENUM = 999`, `DRONE_SUB_ENUM = 0`, `PAYLOAD_ENUM = 998` |
+| **Matrice 4T** | `com.taksolutions.atak2drone.m4t` | [`ATAK2M4T-release.apk`](./current/ATAK2M4T-release.apk) | ~5.03 MB | `DRONE_ENUM = 1001`, `DRONE_SUB_ENUM = 0`, `PAYLOAD_ENUM = 1000` |
 
 ---
 
-## Features & Capabilities
+## Archived Releases
+
+Previous release binaries are archived in [`releases/archive/`](./archive/):
+- `releases/archive/ATAK2M30-release.apk` (v1.0.0)
+- `releases/archive/ATAK2M3T-release.apk` (v1.0.0)
+- `releases/archive/ATAK2M300M350-release.apk` (v1.0.0)
+- `releases/archive/ATAK2M4T-release.apk` (v1.0.0)
+
+---
+
+## Features in v2.0.2
+- **Version Footers**: Added `v2.0.2` release version footer on UI screens and mission metrics outputs.
 - **Area Mapping**: Lawnmower grid flight path planning with minimum flight duration $\theta_{\text{min}}$ optimization via the **Rotating Calipers** algorithm.
 - **Perimeter Survey**: Multi-ring concentric polygon buffer offset flights with configurable **Interior Width** (0–500 ft, default 100 ft) and **Exterior Width** (0–500 ft, default 50 ft) controls.
 - **Dynamic Altitude**: Free-type altitude (20–400 ft) or rapid 200 ft / 400 ft presets.
@@ -25,6 +38,6 @@ This directory contains digitally signed, production-ready release builds of **A
 ---
 
 ## Installation & Sideloading
-1. Download the APK corresponding to your aircraft model onto your Android device or Smart Controller (e.g. DJI RC Pro Enterprise, DJI RC Plus).
+1. Download the APK corresponding to your aircraft model from `releases/current/` onto your Android device or Smart Controller (e.g. DJI RC Pro Enterprise, DJI RC Plus).
 2. Open the APK with the file manager to install (enable "Install unknown apps" if prompted).
 3. Open ATAK2Drone, pick your ATAK KML polygon, configure flight parameters, and tap **Generate Flight KMZ**.

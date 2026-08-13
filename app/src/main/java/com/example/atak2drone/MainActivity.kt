@@ -466,6 +466,7 @@ class MainActivity : AppCompatActivity() {
                         }
                         append("• Total Distance: %.0f m\n".format(metrics.totalDistanceMeters))
                         append("• Est. Duration: %.1f min (%.0f s)\n".format(metrics.estimatedDurationMinutes, metrics.estimatedFlightDurationSeconds))
+                        append("• Output Version: v${BuildConfig.VERSION_NAME}\n")
                     }
                     textViewMetricsSummary.text = summaryText
                     textViewMetricsSummary.visibility = View.VISIBLE
