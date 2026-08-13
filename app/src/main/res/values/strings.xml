@@ -3,7 +3,7 @@
     <!-- App name -->
     <string name="app_name">ATAK2Drone</string>
 
-    <!-- Destination (new) -->
+    <!-- Destination -->
     <string name="label_select_destination">Select Destination Folder</string>
     <string name="label_no_destination">No destination selected</string>
     <string name="destination_selected">Destination: %1$s</string>
@@ -20,6 +20,20 @@
     <!-- Mission Parameters -->
     <string name="hint_mission_name">Enter Mission Name (NO SPACES)</string>
 
+    <!-- Mission Pattern Selection -->
+    <string name="label_mission_type">Flight Pattern</string>
+    <string name="label_pattern_grid">Area Mapping (Optimized)</string>
+    <string name="label_pattern_perimeter">Perimeter Survey</string>
+
+    <!-- Perimeter Width Buffers -->
+    <string name="label_perimeter_buffer_options">Perimeter Survey Width</string>
+    <string name="label_interior_offset">Interior Width (ft):</string>
+    <string name="label_exterior_offset">Exterior Width (ft):</string>
+    <string name="hint_interior_offset">100</string>
+    <string name="hint_exterior_offset">50</string>
+    <string name="desc_slider_interior">Slider to adjust interior perimeter buffer width in feet</string>
+    <string name="desc_slider_exterior">Slider to adjust exterior perimeter buffer width in feet</string>
+
     <string name="label_camera">Camera Type</string>
     <string name="label_camera_eo">EO</string>
     <string name="label_camera_ir">IR</string>
@@ -35,9 +49,10 @@
 
     <!-- Error messages -->
     <string name="error_invalid_name">Invalid mission name</string>
-    <string name="error_invalid_altitude">Altitude must be between 0 and 400 ft</string>
+    <string name="error_invalid_altitude">Altitude must be between 20 and 400 ft</string>
     <string name="error_invalid_camera">Camera type not selected</string>
     <string name="error_invalid_polygon">Invalid polygon geometry</string>
+    <string name="error_invalid_perimeter_offset">Perimeter offsets must be 0 to 500 ft</string>
 
     <!-- Toasts -->
     <string name="toast_invalid_kml">Selected file is not a valid KML</string>
@@ -47,11 +62,11 @@
     <string name="label_altitude">Altitude</string>
     <string name="label_altitude_200">200 ft</string>
     <string name="label_altitude_400">400 ft</string>
-    <string name="error_invalid_altitude_selection">Please select an altitude</string>
+    <string name="label_altitude_custom">Custom</string>
+    <string name="hint_custom_altitude">Altitude in ft (20-400)</string>
+    <string name="error_invalid_altitude_selection">Please select or enter an altitude</string>
 
     <!-- Defaults -->
     <string name="default_altitude">200</string>
-    <!-- KML status strings -->
     <string name="kml_not_loaded">KML Not Loaded</string>
-
 </resources>

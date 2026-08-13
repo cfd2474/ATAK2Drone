@@ -1,0 +1,130 @@
+package com.example.atak2drone.domain.strategy
+
+import com.example.atak2drone.domain.geometry.GeometryUtils
+import com.example.atak2drone.domain.geometry.Point2D
+import com.example.atak2drone.domain.interfaces.IMissionStrategy
+import com.example.atak2drone.domain.model.MissionPlan
+import com.example.atak2drone.domain.model.MissionType
+import com.example.atak2drone.domain.model.OptimizationMetrics
+import com.example.atak2drone.domain.model.SurveyConfig
+import com.example.atak2drone.model.Coordinate
+import kotlin.math.ceil
+import kotlin.math.max
+
+/**
+ * Generates an advanced multi-ring perimeter corridor mission.
+ * Covers user-defined interior width (inset) and exterior width (outset) buffers
+ * using concentric offset flight rings.
+ */
+class VertexPathStrategy : IMissionStrategy {
+
+    override val missionType: MissionType = MissionType.VERTEX_PERIMETER
+
+    override fun generatePlan(polygon: List<Coordinate>, config: SurveyConfig): MissionPlan {
+        require(polygon.size >= 3) { "Polygon must have at least 3 vertices." }
+
+        val origin = GeometryUtils.computeCentroid(polygon)
+        val localPolygon = polygon.map { GeometryUtils.projectToLocalCartesian(it, origin) }
+
+        val extOffsetMeters = config.perimeterExteriorOffsetMeters
+        val intOffsetMeters = config.perimeterInteriorOffsetMeters
+        val lineSpacing = config.calculateLineSpacingMeters()
+
+        // Calculate offset distances for exterior passes (outset)
+        val extPasses = if (extOffsetMeters > 1.0) max(1, ceil(extOffsetMeters / lineSpacing).toInt()) else 0
+        val extOffsets = mutableListOf<Double>()
+        if (extPasses > 0) {
+            val step = extOffsetMeters / extPasses
+            for (p in extPasses downTo 1) {
+                extOffsets.add(p * step)
+            }
+        }
+
+        // Calculate offset distances for interior passes (inset)
+        val intPasses = if (intOffsetMeters > 1.0) max(1, ceil(intOffsetMeters / lineSpacing).toInt()) else 0
+        val intOffsets = mutableListOf<Double>()
+        if (intPasses > 0) {
+            val step = intOffsetMeters / intPasses
+            for (p in 1..intPasses) {
+                intOffsets.add(-p * step)
+            }
+        }
+
+        // All target ring offsets from outermost exterior, through 0 (boundary), to innermost interior
+        val allOffsets = mutableListOf<Double>()
+        allOffsets.addAll(extOffsets)
+        allOffsets.add(0.0) // Primary boundary perimeter
+        allOffsets.addAll(intOffsets)
+
+        val rings = mutableListOf<List<Point2D>>()
+        for (offset in allOffsets) {
+            val ring = GeometryUtils.offsetPolygon(localPolygon, offset)
+            if (ring != null && ring.size >= 3) {
+                rings.add(ring)
+            }
+        }
+
+        // Fallback if no rings could be computed
+        val finalRings = if (rings.isEmpty()) listOf(localPolygon) else rings
+
+        // Chain rings together into a single continuous waypoint sequence
+        val chainedCartesianWaypoints = mutableListOf<Point2D>()
+        var lastPoint: Point2D? = null
+
+        for (ring in finalRings) {
+            // Find vertex on this ring closest to lastPoint to minimize transition distance
+            val startIndex = if (lastPoint != null) {
+                ring.indices.minByOrNull { ring[it].distanceTo(lastPoint!!) } ?: 0
+            } else {
+                0
+            }
+
+            // Add ring vertices starting from closest index, closing the loop
+            val n = ring.size
+            for (i in 0 until n) {
+                val idx = (startIndex + i) % n
+                chainedCartesianWaypoints.add(ring[idx])
+            }
+            // Close the ring back to the first point of this ring
+            chainedCartesianWaypoints.add(ring[startIndex])
+            lastPoint = ring[startIndex]
+        }
+
+        // Convert Cartesian waypoints back to geographic Coordinates
+        val geographicWaypoints = chainedCartesianWaypoints.map {
+            GeometryUtils.projectToGeographic(it, origin)
+        }
+
+        // Compute accurate mission metrics
+        var totalDistanceMeters = 0.0
+        for (i in 0 until chainedCartesianWaypoints.size - 1) {
+            totalDistanceMeters += chainedCartesianWaypoints[i].distanceTo(chainedCartesianWaypoints[i + 1])
+        }
+
+        val totalTurns = chainedCartesianWaypoints.size
+        val flightTime = totalDistanceMeters / config.speedMps
+        val turnTime = totalTurns * config.turnTimePenaltySeconds
+        val totalDuration = flightTime + turnTime
+
+        val metrics = OptimizationMetrics(
+            optimalAngleDegrees = 0.0,
+            isOptimized = false,
+            boundingBoxWidthMeters = extOffsetMeters + intOffsetMeters,
+            numberOfTurns = totalTurns,
+            numberOfTransects = finalRings.size,
+            totalTransectDistanceMeters = totalDistanceMeters,
+            totalTurnDistanceMeters = 0.0,
+            totalDistanceMeters = totalDistanceMeters,
+            estimatedFlightDurationSeconds = totalDuration
+        )
+
+        return MissionPlan(
+            missionName = config.missionName,
+            missionType = MissionType.VERTEX_PERIMETER,
+            polygon = polygon,
+            waypoints = geographicWaypoints,
+            config = config,
+            metrics = metrics
+        )
+    }
+}

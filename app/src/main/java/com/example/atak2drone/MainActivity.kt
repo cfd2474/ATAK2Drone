@@ -7,13 +7,16 @@ import android.os.Bundle
 import android.provider.DocumentsContract
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.View
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.documentfile.provider.DocumentFile
 import com.example.atak2drone.controller.MissionController
+import com.example.atak2drone.domain.model.MissionType
+import com.example.atak2drone.domain.model.SurveyConfig
 import com.example.atak2drone.model.CameraType
-import com.example.atak2drone.utils.KmlUtils
+import com.example.atak2drone.parser.KmlParser
 import java.io.File
 import java.io.IOException
 
@@ -27,10 +30,24 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnSelectKml: Button
     private lateinit var textViewKmlStatus: TextView
 
-    // Altitude presets
+    // Flight Pattern Strategy
+    private lateinit var radioGroupMissionType: RadioGroup
+    private lateinit var radioPatternGrid: RadioButton
+    private lateinit var radioPatternPerimeter: RadioButton
+
+    // Perimeter Corridor Settings
+    private lateinit var layoutPerimeterSettings: LinearLayout
+    private lateinit var editTextInteriorOffset: EditText
+    private lateinit var seekBarInteriorOffset: SeekBar
+    private lateinit var editTextExteriorOffset: EditText
+    private lateinit var seekBarExteriorOffset: SeekBar
+
+    // Altitude presets & Custom
     private lateinit var radioGroupAltitude: RadioGroup
     private lateinit var radioAlt200: RadioButton
     private lateinit var radioAlt400: RadioButton
+    private lateinit var radioAltCustom: RadioButton
+    private lateinit var editTextCustomAltitude: EditText
 
     private lateinit var radioGroupCamera: RadioGroup
     private lateinit var radioCameraEO: RadioButton
@@ -38,10 +55,18 @@ class MainActivity : AppCompatActivity() {
     private lateinit var radioCameraBoth: RadioButton
 
     private lateinit var btnGenerate: Button
+    private lateinit var textViewMetricsSummary: TextView
 
     private var pickedKmlUri: Uri? = null
     private var destTreeUri: Uri? = null
     private var polygonLooksValid = false
+
+    private val kmlParser = KmlParser()
+    private val missionController = MissionController()
+
+    // Guards to prevent infinite recursion during two-way slider <-> edittext sync
+    private var isUpdatingInterior = false
+    private var isUpdatingExterior = false
 
     // Mission name rules: start with a letter; then A–Z, a–z, 0–9, _ or -; max 32 chars
     private val NAME_REGEX = Regex("^[A-Za-z][A-Za-z0-9_-]{0,31}$")
@@ -68,7 +93,7 @@ class MainActivity : AppCompatActivity() {
 
         try {
             val tmp = copyUriToTemp(uri, suggestedExt = guessExtForUri(uri))
-            val polygon = tmp.inputStream().use { KmlUtils.parseSinglePolygonFromKml(it) }
+            val polygon = tmp.inputStream().use { kmlParser.parsePolygon(it) }
             polygonLooksValid = polygon.size >= 3
 
             val name = displayName(uri) ?: uri.lastPathSegment ?: "KML"
@@ -118,6 +143,7 @@ class MainActivity : AppCompatActivity() {
 
         bindViews()
         wireUi()
+        setupPerimeterSync()
         setDefaults()
         installMissionNameValidation()
         updateGenerateEnabled()
@@ -133,9 +159,21 @@ class MainActivity : AppCompatActivity() {
         btnSelectKml = findViewById(R.id.btnSelectKml)
         textViewKmlStatus = findViewById(R.id.textViewKmlStatus)
 
+        radioGroupMissionType = findViewById(R.id.radioGroupMissionType)
+        radioPatternGrid = findViewById(R.id.radioPatternGrid)
+        radioPatternPerimeter = findViewById(R.id.radioPatternPerimeter)
+
+        layoutPerimeterSettings = findViewById(R.id.layoutPerimeterSettings)
+        editTextInteriorOffset = findViewById(R.id.editTextInteriorOffset)
+        seekBarInteriorOffset = findViewById(R.id.seekBarInteriorOffset)
+        editTextExteriorOffset = findViewById(R.id.editTextExteriorOffset)
+        seekBarExteriorOffset = findViewById(R.id.seekBarExteriorOffset)
+
         radioGroupAltitude = findViewById(R.id.radioGroupAltitude)
         radioAlt200 = findViewById(R.id.radioAlt200)
         radioAlt400 = findViewById(R.id.radioAlt400)
+        radioAltCustom = findViewById(R.id.radioAltCustom)
+        editTextCustomAltitude = findViewById(R.id.editTextCustomAltitude)
 
         radioGroupCamera = findViewById(R.id.radioGroupCamera)
         radioCameraEO = findViewById(R.id.radioCameraEO)
@@ -143,6 +181,7 @@ class MainActivity : AppCompatActivity() {
         radioCameraBoth = findViewById(R.id.radioCameraBoth)
 
         btnGenerate = findViewById(R.id.btnGenerate)
+        textViewMetricsSummary = findViewById(R.id.textViewMetricsSummary)
     }
 
     private fun wireUi() {
@@ -160,6 +199,32 @@ class MainActivity : AppCompatActivity() {
                 )
             )
         }
+
+        radioGroupMissionType.setOnCheckedChangeListener { _, checkedId ->
+            if (checkedId == R.id.radioPatternPerimeter) {
+                layoutPerimeterSettings.visibility = View.VISIBLE
+            } else {
+                layoutPerimeterSettings.visibility = View.GONE
+            }
+        }
+
+        radioGroupAltitude.setOnCheckedChangeListener { _, checkedId ->
+            if (checkedId == R.id.radioAltCustom) {
+                editTextCustomAltitude.visibility = View.VISIBLE
+                editTextCustomAltitude.requestFocus()
+            } else {
+                editTextCustomAltitude.visibility = View.GONE
+            }
+            updateGenerateEnabled()
+        }
+
+        editTextCustomAltitude.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                updateGenerateEnabled()
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
 
         btnGenerate.setOnClickListener { onGenerateClicked() }
 
@@ -179,13 +244,78 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun setupPerimeterSync() {
+        // Interior Offset 2-way sync
+        seekBarInteriorOffset.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser && !isUpdatingInterior) {
+                    isUpdatingInterior = true
+                    editTextInteriorOffset.setText(progress.toString())
+                    isUpdatingInterior = false
+                }
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        editTextInteriorOffset.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (!isUpdatingInterior) {
+                    val value = s?.toString()?.toIntOrNull()
+                    if (value != null && value in 0..500) {
+                        isUpdatingInterior = true
+                        seekBarInteriorOffset.progress = value
+                        isUpdatingInterior = false
+                    }
+                }
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+        // Exterior Offset 2-way sync
+        seekBarExteriorOffset.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser && !isUpdatingExterior) {
+                    isUpdatingExterior = true
+                    editTextExteriorOffset.setText(progress.toString())
+                    isUpdatingExterior = false
+                }
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        editTextExteriorOffset.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                if (!isUpdatingExterior) {
+                    val value = s?.toString()?.toIntOrNull()
+                    if (value != null && value in 0..500) {
+                        isUpdatingExterior = true
+                        seekBarExteriorOffset.progress = value
+                        isUpdatingExterior = false
+                    }
+                }
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+    }
+
     private fun setDefaults() {
         textViewKmlStatus.text = getString(R.string.kml_not_loaded)
+        radioPatternGrid.isChecked = true
+        layoutPerimeterSettings.visibility = View.GONE
         radioCameraEO.isChecked = true
         radioAlt200.isChecked = true
+        editTextCustomAltitude.visibility = View.GONE
         btnGenerate.isEnabled = false
 
-        // Start blank on launch
+        editTextInteriorOffset.setText("100")
+        seekBarInteriorOffset.progress = 100
+        editTextExteriorOffset.setText("50")
+        seekBarExteriorOffset.progress = 50
+
         editTextMissionName.text.clear()
         editTextMissionName.error = null
     }
@@ -215,42 +345,44 @@ class MainActivity : AppCompatActivity() {
         return NAME_REGEX.matches(name)
     }
 
+    private fun altitudeValid(): Boolean {
+        return when (radioGroupAltitude.checkedRadioButtonId) {
+            R.id.radioAlt200, R.id.radioAlt400 -> true
+            R.id.radioAltCustom -> {
+                val alt = editTextCustomAltitude.text.toString().toDoubleOrNull()
+                alt != null && alt in 20.0..400.0
+            }
+            else -> false
+        }
+    }
+
     private fun updateGenerateEnabled() {
         btnGenerate.isEnabled =
             pickedKmlUri != null &&
                     polygonLooksValid &&
                     destTreeUri != null &&
-                    missionNameValid()
+                    missionNameValid() &&
+                    altitudeValid()
     }
 
     // ---- Generate ----
     private fun onGenerateClicked() {
-        val kmlUri = pickedKmlUri
-        if (kmlUri == null) {
-            Toast.makeText(this, getString(R.string.label_no_kml), Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (!polygonLooksValid) {
-            Toast.makeText(this, getString(R.string.error_invalid_polygon), Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val missionNameRaw = editTextMissionName.text.toString().trim()
-        if (!NAME_REGEX.matches(missionNameRaw)) {
-            editTextMissionName.error =
-                "Invalid name: Letter first, A–Z/0–9/_/- only, max 32 chars."
-            editTextMissionName.requestFocus()
-            return
-        }
-        val missionName = missionNameRaw
+        val kmlUri = pickedKmlUri ?: return
+        val missionName = editTextMissionName.text.toString().trim()
+        val treeUri = destTreeUri ?: return
 
         val altitudeFt = when (radioGroupAltitude.checkedRadioButtonId) {
             R.id.radioAlt200 -> 200.0
             R.id.radioAlt400 -> 400.0
-            else -> {
-                Toast.makeText(this, getString(R.string.error_invalid_altitude_selection), Toast.LENGTH_LONG).show()
-                return
+            R.id.radioAltCustom -> {
+                val alt = editTextCustomAltitude.text.toString().toDoubleOrNull()
+                if (alt == null || alt !in 20.0..400.0) {
+                    Toast.makeText(this, getString(R.string.error_invalid_altitude), Toast.LENGTH_LONG).show()
+                    return
+                }
+                alt
             }
+            else -> return
         }
 
         val cameraType = when (radioGroupCamera.checkedRadioButtonId) {
@@ -259,56 +391,72 @@ class MainActivity : AppCompatActivity() {
             else -> CameraType.EO
         }
 
-        val treeUri = destTreeUri
-        if (treeUri == null) {
-            Toast.makeText(this, getString(R.string.error_no_destination), Toast.LENGTH_LONG).show()
-            return
-        }
+        val isPerimeter = radioGroupMissionType.checkedRadioButtonId == R.id.radioPatternPerimeter
+        val missionType = if (isPerimeter) MissionType.VERTEX_PERIMETER else MissionType.GRID_SURVEY
+
+        val interiorOffsetFt = editTextInteriorOffset.text.toString().toDoubleOrNull() ?: 100.0
+        val exteriorOffsetFt = editTextExteriorOffset.text.toString().toDoubleOrNull() ?: 50.0
+
+        val altitudeMeters = altitudeFt * 0.3048
+        val config = SurveyConfig(
+            missionName = missionName,
+            altitudeMeters = altitudeMeters,
+            cameraType = cameraType,
+            perimeterInteriorOffsetFt = interiorOffsetFt,
+            perimeterExteriorOffsetFt = exteriorOffsetFt
+        )
 
         try {
             val tmp = copyUriToTemp(kmlUri, suggestedExt = guessExtForUri(kmlUri))
 
             val result = tmp.inputStream().use { input ->
-                MissionController.generateMission(
+                missionController.createMission(
                     context = this,
                     kmlInputStream = input,
-                    missionName = missionName,
-                    altitudeFt = altitudeFt,
-                    cameraType = cameraType
+                    config = config,
+                    missionType = missionType
                 )
             }
 
             tmp.delete()
 
-            result.onSuccess { internalKmzPath ->
-                val copied = copyToDestination(internalKmzPath, "$missionName.kmz")
+            result.onSuccess { genResult ->
+                val copied = copyToDestination(genResult.kmzFilePath, "$missionName.kmz")
                 val base = prettyPathForTreeUri(treeUri)
-                if (copied != null) {
-                    textViewKmlStatus.text = getString(R.string.kml_ready)
-                    Toast.makeText(this, getString(R.string.toast_wpml_success), Toast.LENGTH_SHORT).show()
+                textViewKmlStatus.text = getString(R.string.kml_ready)
+                Toast.makeText(this, getString(R.string.toast_wpml_success), Toast.LENGTH_SHORT).show()
 
-                    val shown = if (base.startsWith("URI:")) {
-                        "Saved: ${copied.name}"
-                    } else {
-                        "Saved: $base/${copied.name}"
-                    }
-                    textViewDestinationPath.text = shown
-
-                    // NEW: prompt to launch DJI Pilot 2 (or show not-installed notice)
-                    showLaunchPromptIfInstalled(
-                        appLabel = "DJI Pilot 2",
-                        packageName = "com.dji.industry.pilot"
-                    )
+                val shown = if (base.startsWith("URI:")) {
+                    "Saved: ${copied?.name ?: "$missionName.kmz"}"
                 } else {
-                    textViewKmlStatus.text = "${getString(R.string.toast_wpml_success)}\n$internalKmzPath"
-                    Toast.makeText(this, getString(R.string.toast_wpml_success), Toast.LENGTH_SHORT).show()
-
-                    // Even if we didn't copy out, still offer to launch app if present
-                    showLaunchPromptIfInstalled(
-                        appLabel = "DJI Pilot 2",
-                        packageName = "com.dji.industry.pilot"
-                    )
+                    "Saved: $base/${copied?.name ?: "$missionName.kmz"}"
                 }
+                textViewDestinationPath.text = shown
+
+                // Display optimization & mission metrics summary
+                val metrics = genResult.plan.metrics
+                if (metrics != null) {
+                    val summaryText = buildString {
+                        append("★ Mission Metrics:\n")
+                        if (missionType == MissionType.GRID_SURVEY) {
+                            append("• Pattern: Area Mapping (Optimized)\n")
+                            append("• Optimal Flight Angle: %.1f°\n".format(metrics.optimalAngleDegrees))
+                            append("• Transects: ${metrics.numberOfTransects} | Turns: ${metrics.numberOfTurns}\n")
+                        } else {
+                            append("• Pattern: Perimeter Survey (In: %.0f ft, Out: %.0f ft)\n".format(interiorOffsetFt, exteriorOffsetFt))
+                            append("• Concentric Rings: ${metrics.numberOfTransects}\n")
+                        }
+                        append("• Total Distance: %.0f m\n".format(metrics.totalDistanceMeters))
+                        append("• Est. Duration: %.1f min (%.0f s)\n".format(metrics.estimatedDurationMinutes, metrics.estimatedFlightDurationSeconds))
+                    }
+                    textViewMetricsSummary.text = summaryText
+                    textViewMetricsSummary.visibility = View.VISIBLE
+                }
+
+                showLaunchPromptIfInstalled(
+                    appLabel = "DJI Pilot 2",
+                    packageName = "com.dji.industry.pilot"
+                )
             }.onFailure { err ->
                 textViewKmlStatus.text = "${getString(R.string.toast_wpml_failure)}: ${err.message}"
                 Toast.makeText(this, "${getString(R.string.toast_wpml_failure)}: ${err.message}", Toast.LENGTH_LONG).show()
@@ -383,7 +531,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ---- Helpers (unchanged) ----
     private fun copyUriToTemp(uri: Uri, suggestedExt: String): File {
         val ext = if (suggestedExt.isNotBlank()) suggestedExt else ".kml"
         val tmp = File.createTempFile("atak2drone_input_", ext, cacheDir)
