@@ -22,11 +22,11 @@
 
     <!-- Mission Pattern Selection -->
     <string name="label_mission_type">Flight Pattern</string>
-    <string name="label_pattern_grid">Lawnmower Survey (Optimized)</string>
-    <string name="label_pattern_perimeter">Perimeter Boundary Corridor</string>
+    <string name="label_pattern_grid">Area Mapping (Optimized)</string>
+    <string name="label_pattern_perimeter">Perimeter Survey</string>
 
     <!-- Perimeter Width Buffers -->
-    <string name="label_perimeter_buffer_options">Perimeter Corridor Width</string>
+    <string name="label_perimeter_buffer_options">Perimeter Survey Width</string>
     <string name="label_interior_offset">Interior Width (ft):</string>
     <string name="label_exterior_offset">Exterior Width (ft):</string>
     <string name="hint_interior_offset">100</string>

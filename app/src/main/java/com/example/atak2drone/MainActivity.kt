@@ -439,11 +439,11 @@ class MainActivity : AppCompatActivity() {
                     val summaryText = buildString {
                         append("★ Mission Metrics:\n")
                         if (missionType == MissionType.GRID_SURVEY) {
-                            append("• Pattern: Lawnmower Survey (Optimized)\n")
+                            append("• Pattern: Area Mapping (Optimized)\n")
                             append("• Optimal Flight Angle: %.1f°\n".format(metrics.optimalAngleDegrees))
                             append("• Transects: ${metrics.numberOfTransects} | Turns: ${metrics.numberOfTurns}\n")
                         } else {
-                            append("• Pattern: Perimeter Corridor (In: %.0f ft, Out: %.0f ft)\n".format(interiorOffsetFt, exteriorOffsetFt))
+                            append("• Pattern: Perimeter Survey (In: %.0f ft, Out: %.0f ft)\n".format(interiorOffsetFt, exteriorOffsetFt))
                             append("• Concentric Rings: ${metrics.numberOfTransects}\n")
                         }
                         append("• Total Distance: %.0f m\n".format(metrics.totalDistanceMeters))
