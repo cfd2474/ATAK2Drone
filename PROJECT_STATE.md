@@ -1,8 +1,9 @@
 # ATAK2Drone — Project State
 
 ## 1. Project Status Overview
-- **Current Goal**: Build and publish digitally signed public APK releases for all supported DJI enterprise variants (**M30/M30T**, **M3T**, **M300/M350**, **M4T**).
-- **Current Phase**: Released & Published (`v1.0.0` tagged and pushed to GitHub with `releases/` directory).
+- **Current Version**: **v2.0.2** (versionCode = 2)
+- **Current Goal**: Build and publish digitally signed public APK releases for all supported DJI enterprise variants (**M30/M30T**, **M3T**, **M300/M350**, **M4T**) with version footers and categorized `releases/current/` and `releases/archive/` folders.
+- **Current Phase**: Released & Published (`v2.0.2` tagged and pushed to GitHub).
 
 ## 2. Completed Steps
 - Configured Android SDK path in `local.properties` and verified JDK 17 environment.
@@ -14,8 +15,10 @@
 - Implemented dynamic `WpmlBuilder`, `KmzPackager`, `KmlParser`, and refactored `MissionController`.
 - Implemented `matrice30` product flavor in `app/build.gradle.kts` (`DRONE_ENUM = 67`, `DRONE_SUB_ENUM = 1`, `PAYLOAD_ENUM = 53`).
 - Added real-time missing requirements warning indicator next to **Generate Flight KMZ** button.
+- Updated versioning to **v2.0.2** (`versionCode = 2`) with version footers in `activity_main.xml` and mission metrics output.
+- Reorganized `releases/` into `releases/current/` and `releases/archive/`.
 - Configured secure keystore signing in `local.properties` (never committed to git) and generated verified signed release APKs.
-- Published release APKs to `releases/` in git repository, tagged `v1.0.0`, and pushed to remote `dev` and `master` branches.
+- Published v2.0.2 release APKs to `releases/current/` in git repository, tagged `v2.0.2`, and pushed to remote `dev` and `master` branches.
 
 ## 3. In Progress
 - All requested features, builds, and releases complete.
@@ -38,4 +41,4 @@
 | DocumentBuilderFactory for KmlParser | Standard Java XML parsing provides universal execution in pure JVM test environments and Android runtime without external pull-parser mocks. |
 | DJI M30 / M30T Source of Truth Enums | `DRONE_ENUM = 67`, `DRONE_SUB_ENUM = 1`, `PAYLOAD_ENUM = 53` ensure DJI Pilot 2 recognizes the mission package natively for Matrice 30 series aircraft. |
 | Dynamic Secure Keystore Signing | Read release signing credentials from unversioned `local.properties` to ensure zero secret leakage to git repositories. |
-| In-Repository Releases Catalog | Placing signed release APKs in `releases/` with a comprehensive `README.md` and `v1.0.0` git tag provides easy access directly within GitHub. |
+| Releases Current / Archive Directory Structure | Cleanly partitions the active latest releases in `releases/current/` from prior revisions in `releases/archive/` while keeping binaries easily accessible. |
