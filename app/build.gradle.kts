@@ -83,6 +83,7 @@ android {
             resValue("string", "app_name", "ATAK2M3T")
 
             buildConfigField("int", "DRONE_ENUM", "77")
+            buildConfigField("int", "DRONE_SUB_ENUM", "0")
             buildConfigField("int", "PAYLOAD_ENUM", "67")
         }
 
@@ -93,10 +94,11 @@ android {
             resValue("string", "app_name", "ATAK2M300/M350")
 
             buildConfigField("int", "DRONE_ENUM", "999")
+            buildConfigField("int", "DRONE_SUB_ENUM", "0")
             buildConfigField("int", "PAYLOAD_ENUM", "998")
         }
 
-        // NEW: M4T flavor
+        // M4T flavor
         create("m4t") {
             dimension = "drone"
             applicationId = "com.taksolutions.atak2drone.m4t"
@@ -105,7 +107,21 @@ android {
 
             // TODO: replace with real DJI enum values for M4T when known
             buildConfigField("int", "DRONE_ENUM", "1001")
+            buildConfigField("int", "DRONE_SUB_ENUM", "0")
             buildConfigField("int", "PAYLOAD_ENUM", "1000")
+        }
+
+        // Matrice 30 / 30T flavor
+        create("matrice30") {
+            dimension = "drone"
+            applicationId = "com.taksolutions.atak2drone.m30"
+            versionNameSuffix = "-m30"
+            resValue("string", "app_name", "ATAK2M30")
+
+            // DJI M30/M30T enums (DRONE_ENUM = 67, DRONE_SUB_ENUM = 1 for M30T, PAYLOAD_ENUM = 53)
+            buildConfigField("int", "DRONE_ENUM", "67")
+            buildConfigField("int", "DRONE_SUB_ENUM", "1")
+            buildConfigField("int", "PAYLOAD_ENUM", "53")
         }
     }
 }
