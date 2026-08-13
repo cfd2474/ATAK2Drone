@@ -13,7 +13,7 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- 2. KML File Selection -->
+        <!-- 1. KML File Selection -->
         <Button
             android:id="@+id/btnSelectKml"
             android:layout_width="match_parent"
@@ -22,17 +22,18 @@
             android:contentDescription="@string/select_kml_file_desc"
             android:minHeight="48dp" />
 
-        <!-- UPDATED: KML status -->
+        <!-- KML status -->
         <TextView
             android:id="@+id/textViewKmlStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/kml_not_loaded"
             android:textColor="#F60000"
-            android:paddingTop="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="8dp"
             android:contentDescription="@string/kml_status_desc" />
 
-        <!-- 1. Mission Name (with info icon) -->
+        <!-- 2. Mission Name (with info icon) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -65,11 +66,12 @@
                 android:src="@drawable/ic_info_24" />
         </LinearLayout>
 
-        <!-- 0. Destination selection (required first) -->
+        <!-- 3. Destination selection -->
         <Button
             android:id="@+id/btnSelectDestination"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:text="@string/label_select_destination"
             android:contentDescription="@string/select_destination_desc"
             android:minHeight="48dp" />
@@ -79,15 +81,129 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/label_no_destination"
-            android:paddingTop="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="8dp"
             android:importantForAccessibility="yes" />
 
-        <!-- 3. Altitude Presets -->
+        <!-- 4. Flight Pattern (Strategy Selection) -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/label_mission_type"
+            android:layout_marginTop="8dp"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/radioGroupMissionType"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <RadioButton
+                android:id="@+id/radioPatternGrid"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_pattern_grid" />
+
+            <RadioButton
+                android:id="@+id/radioPatternPerimeter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_pattern_perimeter" />
+        </RadioGroup>
+
+        <!-- 4b. Perimeter Corridor Width Options (Visible when Perimeter Mode is selected) -->
+        <LinearLayout
+            android:id="@+id/layoutPerimeterSettings"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#10000000"
+            android:padding="12dp"
+            android:layout_marginTop="8dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_perimeter_buffer_options"
+                android:textStyle="bold"
+                android:textSize="14sp" />
+
+            <!-- Interior Radius -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/label_interior_offset"
+                    android:textSize="13sp" />
+
+                <EditText
+                    android:id="@+id/editTextInteriorOffset"
+                    android:layout_width="80dp"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:text="@string/hint_interior_offset"
+                    android:gravity="center"
+                    android:minHeight="48dp" />
+            </LinearLayout>
+
+            <SeekBar
+                android:id="@+id/seekBarInteriorOffset"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="500"
+                android:progress="100"
+                android:contentDescription="@string/desc_slider_interior"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Exterior Radius -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="4dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/label_exterior_offset"
+                    android:textSize="13sp" />
+
+                <EditText
+                    android:id="@+id/editTextExteriorOffset"
+                    android:layout_width="80dp"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:text="@string/hint_exterior_offset"
+                    android:gravity="center"
+                    android:minHeight="48dp" />
+            </LinearLayout>
+
+            <SeekBar
+                android:id="@+id/seekBarExteriorOffset"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="500"
+                android:progress="50"
+                android:contentDescription="@string/desc_slider_exterior" />
+        </LinearLayout>
+
+        <!-- 5. Altitude Presets & Custom Input -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/label_altitude"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="8dp"
             android:textStyle="bold" />
 
         <RadioGroup
@@ -107,14 +223,30 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/label_altitude_400" />
+
+            <RadioButton
+                android:id="@+id/radioAltCustom"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/label_altitude_custom" />
         </RadioGroup>
 
-        <!-- 5. Camera Type Options -->
+        <!-- Custom Altitude EditText (Visible when Custom is chosen) -->
+        <EditText
+            android:id="@+id/editTextCustomAltitude"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/hint_custom_altitude"
+            android:inputType="numberDecimal"
+            android:visibility="gone"
+            android:minHeight="48dp" />
+
+        <!-- 6. Camera Type Options -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/label_camera"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="8dp"
             android:textStyle="bold" />
 
         <RadioGroup
@@ -142,7 +274,7 @@
                 android:text="@string/label_camera_both" />
         </RadioGroup>
 
-        <!-- 6. Generate Button -->
+        <!-- 7. Generate Button -->
         <Button
             android:id="@+id/btnGenerate"
             android:layout_width="match_parent"
@@ -153,16 +285,27 @@
             android:layout_marginTop="16dp"
             android:minHeight="48dp" />
 
-        <!-- 7. Note at bottom -->
+        <!-- Optimization / Plan Summary Card -->
+        <TextView
+            android:id="@+id/textViewMetricsSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:background="#15000000"
+            android:padding="12dp"
+            android:layout_marginTop="12dp"
+            android:textSize="13sp" />
+
+        <!-- 8. Note at bottom -->
         <TextView
             android:id="@+id/textViewNote"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Application generates flight plan for DRONE. If using a different aircraft, change parameters in DJI application."
+            android:text="Generates optimal DJI WPML flight packages for DJI Pilot 2."
             android:textSize="12sp"
             android:textColor="@android:color/darker_gray"
             android:gravity="center"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="16dp"
             android:padding="8dp" />
 
     </LinearLayout>
