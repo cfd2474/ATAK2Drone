@@ -49,10 +49,11 @@ class WpmlBuilder(
             val waylinesFile = locateWaylines(targetDirectory)
             val doc = parseXml(waylinesFile)
 
-            val h = String.format("%.3f", altitudeMeters)
-            val speedStr = String.format("%.1f", plan.config.speedMps)
+            val h = String.format(java.util.Locale.US, "%.3f", altitudeMeters)
+            val speedStr = String.format(java.util.Locale.US, "%.1f", plan.config.speedMps)
 
-            // Set dynamic heights and parameters
+            // Set dynamic heights, parameters, and WGS84 datum flag
+            setAllTexts(doc, "useGcj02", "0")
             setAllTexts(doc, "executeHeight", h)
             setAllTexts(doc, "executeHeightMode", "relativeToStartPoint")
             setAllTexts(doc, "isUseAbsoluteAltitude", "false")
@@ -128,7 +129,7 @@ class WpmlBuilder(
                 val name = doc.createElementNS(KML_NS, "name").apply { textContent = "WP ${idx + 1}" }
                 val point = doc.createElementNS(KML_NS, "Point")
                 val coords = doc.createElementNS(KML_NS, "coordinates").apply {
-                    textContent = String.format("%.7f,%.7f", coord.longitude, coord.latitude)
+                    textContent = String.format(java.util.Locale.US, "%.7f,%.7f", coord.longitude, coord.latitude)
                 }
                 point.appendChild(coords)
                 placemark.appendChild(name)
@@ -140,7 +141,7 @@ class WpmlBuilder(
 
         existing.forEach { folder.removeChild(it) }
 
-        val speedStr = String.format("%.1f", speedMps)
+        val speedStr = String.format(java.util.Locale.US, "%.1f", speedMps)
         waypoints.forEachIndexed { idx, coord ->
             val clone = prototype.cloneNode(true) as Element
 
@@ -150,7 +151,7 @@ class WpmlBuilder(
 
             firstChildByLocalName(clone, KML_NS, "Point")?.let { pt ->
                 firstChildByLocalName(pt, KML_NS, "coordinates")?.apply {
-                    textContent = String.format("%.7f,%.7f", coord.longitude, coord.latitude)
+                    textContent = String.format(java.util.Locale.US, "%.7f,%.7f", coord.longitude, coord.latitude)
                 }
             }
 
@@ -197,7 +198,7 @@ class WpmlBuilder(
     private fun buildKmlCoordinatesText(polygon: List<Coordinate>): String {
         val sb = StringBuilder()
         polygon.forEach { c ->
-            sb.append(String.format("  %.7f,%.7f,0\n", c.longitude, c.latitude))
+            sb.append(String.format(java.util.Locale.US, "  %.7f,%.7f,0\n", c.longitude, c.latitude))
         }
         return sb.toString().trimEnd()
     }
