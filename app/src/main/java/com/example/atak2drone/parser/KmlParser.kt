@@ -13,14 +13,22 @@ import kotlin.math.abs
  * Responsible strictly for parsing KML files into structured polygon vertices and
  * formatting boundary polygons into KML format.
  */
-class KmlParser : IKmlParser {
+class KmlParser(
+    private val datumConverter: com.example.atak2drone.domain.interfaces.IDatumConverter = com.example.atak2drone.domain.datum.DatumConverter()
+) : IKmlParser {
 
     override fun parsePolygon(kmlInputStream: InputStream): List<Coordinate> {
+        val rawBytes = kmlInputStream.readBytes()
+        val kmlText = String(rawBytes, Charsets.UTF_8)
+        val detectedDatum = datumConverter.detectDatumFromKml(kmlText)
+
         val doc = DocumentBuilderFactory.newInstance().apply {
             isNamespaceAware = true
-        }.newDocumentBuilder().parse(kmlInputStream).apply {
+        }.newDocumentBuilder().parse(java.io.ByteArrayInputStream(rawBytes)).apply {
             documentElement.normalize()
         }
+
+        var rawRing: List<Coordinate>? = null
 
         // 1. Search for Polygon coordinates (highest priority)
         val polygonList = doc.getElementsByTagNameNS("*", "Polygon")
@@ -31,44 +39,49 @@ class KmlParser : IKmlParser {
                 val text = coordsList.item(0).textContent.trim()
                 if (text.isNotEmpty()) {
                     val ring = parseCoordinateTextToLatLng(text)
-                    if (ring.size >= 3) return ring
+                    if (ring.size >= 3) rawRing = ring
                 }
             }
         }
 
         // 2. Search for LinearRing coordinates
-        val linearRings = doc.getElementsByTagNameNS("*", "LinearRing")
-        if (linearRings.length > 0) {
-            val ringEl = linearRings.item(0) as Element
-            val coordsList = ringEl.getElementsByTagNameNS("*", "coordinates")
-            if (coordsList.length > 0) {
-                val text = coordsList.item(0).textContent.trim()
-                if (text.isNotEmpty()) {
-                    val ring = parseCoordinateTextToLatLng(text)
-                    if (ring.size >= 3) return ring
+        if (rawRing == null) {
+            val linearRings = doc.getElementsByTagNameNS("*", "LinearRing")
+            if (linearRings.length > 0) {
+                val ringEl = linearRings.item(0) as Element
+                val coordsList = ringEl.getElementsByTagNameNS("*", "coordinates")
+                if (coordsList.length > 0) {
+                    val text = coordsList.item(0).textContent.trim()
+                    if (text.isNotEmpty()) {
+                        val ring = parseCoordinateTextToLatLng(text)
+                        if (ring.size >= 3) rawRing = ring
+                    }
                 }
             }
         }
 
         // 3. Detect LineString (not a closed polygon)
         val lineStrings = doc.getElementsByTagNameNS("*", "LineString")
-        if (lineStrings.length > 0) {
+        if (rawRing == null && lineStrings.length > 0) {
             throw IllegalArgumentException(
                 "KML contains a LineString but no closed Polygon/LinearRing. Draw a Polygon in ATAK for mapping."
             )
         }
 
         // 4. Fallback search for any coordinates tag
-        val anyCoords = doc.getElementsByTagNameNS("*", "coordinates")
-        if (anyCoords.length > 0) {
-            val text = anyCoords.item(0).textContent.trim()
-            if (text.isNotEmpty()) {
-                val ring = parseCoordinateTextToLatLng(text)
-                if (ring.size >= 3) return ring
+        if (rawRing == null) {
+            val anyCoords = doc.getElementsByTagNameNS("*", "coordinates")
+            if (anyCoords.length > 0) {
+                val text = anyCoords.item(0).textContent.trim()
+                if (text.isNotEmpty()) {
+                    val ring = parseCoordinateTextToLatLng(text)
+                    if (ring.size >= 3) rawRing = ring
+                }
             }
         }
 
-        throw IllegalArgumentException("No usable geometry found in KML (Polygon/LinearRing/LineString not present).")
+        val ring = rawRing ?: throw IllegalArgumentException("No usable geometry found in KML (Polygon/LinearRing/LineString not present).")
+        return datumConverter.convertPolygonToWgs84(ring, detectedDatum)
     }
 
     override fun buildMinimalPolygonKml(
