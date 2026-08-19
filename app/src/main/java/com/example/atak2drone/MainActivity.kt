@@ -206,6 +206,9 @@ class MainActivity : AppCompatActivity() {
         btnGenerate = findViewById(R.id.btnGenerate)
         textViewMissingRequirements = findViewById(R.id.textViewMissingRequirements)
         textViewMetricsSummary = findViewById(R.id.textViewMetricsSummary)
+        
+        val textViewNote = findViewById<TextView>(R.id.textViewNote)
+        textViewNote.text = "v${BuildConfig.VERSION_NAME} • Generates optimal DJI WPML flight packages for DJI Pilot 2"
     }
 
     private fun wireUi() {
