@@ -25,7 +25,8 @@
 - Implemented automatic network error handling that notifies the user and gracefully reverts to Flat 2D mission mode if open-source DEM elevation fetching fails.
 - Added missing `INTERNET` and `ACCESS_NETWORK_STATE` permissions to `AndroidManifest.xml` and added `User-Agent` & Open-Topo-Data fallback to `OpenElevationProvider.kt`.
 - Enforced WGS 84 datum flag (`<wpml:useGcj02>0</wpml:useGcj02>`) in `WpmlBuilder.kt` & `WpmlGenerator.kt` and forced `java.util.Locale.US` formatting across all XML floating-point coordinates to eliminate map shifts in DJI Pilot 2.
-- Created `DynamicSlopeCorrectionTest.kt` unit test suite and verified complete build & test suite (`./gradlew test` succeeded with 0 errors).
+- Implemented 100% automated Datum Conversion Protocol (`IDatumConverter`, `DatumConverter`, `SourceDatum`) supporting automatic detection and Helmert/Molodensky/GCJ02 to WGS 84 conversion behind the scenes.
+- Created `DynamicSlopeCorrectionTest.kt` & `DatumConverterTest.kt` unit test suites and verified complete build & test suite (`./gradlew test` succeeded with 0 errors).
 
 ## 3. In Progress
 - Final release validation across all 4 drone variants.
