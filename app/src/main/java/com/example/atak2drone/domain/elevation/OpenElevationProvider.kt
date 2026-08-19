@@ -6,18 +6,16 @@ import com.example.atak2drone.model.Coordinate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.math.abs
-import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 
 /**
  * Implementation of [IElevationProvider] querying open-source elevation APIs
- * (Open-Elevation REST API and USGS 3DEP API) with local caching.
+ * (Open-Elevation REST API, Open-Topo-Data API, and USGS 3DEP API) with local caching.
  */
 class OpenElevationProvider(
     private val cache: ElevationCache = ElevationCache()
@@ -25,9 +23,11 @@ class OpenElevationProvider(
 
     companion object {
         private const val OPEN_ELEVATION_URL = "https://api.open-elevation.com/api/v1/lookup"
+        private const val OPEN_TOPO_DATA_URL = "https://api.opentopodata.org/v1/srtm30m"
         private const val USGS_ELEVATION_URL = "https://epqs.nationalmap.gov/v1/json"
-        private const val CONNECT_TIMEOUT_MS = 6000
-        private const val READ_TIMEOUT_MS = 6000
+        private const val USER_AGENT = "ATAK2Drone/2.1.0 (Android Mobile)"
+        private const val CONNECT_TIMEOUT_MS = 8000
+        private const val READ_TIMEOUT_MS = 8000
     }
 
     override suspend fun getElevations(coordinates: List<Coordinate>): List<Double> = withContext(Dispatchers.IO) {
@@ -51,10 +51,11 @@ class OpenElevationProvider(
             return@withContext results
         }
 
-        // Batch query missing coordinates from Open-Elevation API
+        // Query missing coordinates across providers (Open-Elevation -> Open-Topo-Data -> USGS)
         val fetchedElevations = fetchBatchFromOpenElevation(missingCoords)
+            ?: fetchBatchFromOpenTopoData(missingCoords)
             ?: fetchFallbackFromUsgs(missingCoords)
-            ?: List(missingCoords.size) { 0.0 }
+            ?: throw IOException("Elevation APIs unreachable (check internet connection).")
 
         for (k in missingCoords.indices) {
             val idx = missingIndices[k]
@@ -76,13 +77,11 @@ class OpenElevationProvider(
         }
         if (coordinates.isEmpty()) return@withContext emptyList()
 
-        // For each boundary coordinate P, project a sampled point P_offset along the normal azimuth
         val sampledPoints = mutableListOf<Coordinate>()
         for (i in coordinates.indices) {
             val p0 = coordinates[i]
             val azRad = Math.toRadians(normalAzimuthsDeg[i])
-            
-            // Project sample distance (meters) along normal direction
+
             val origin = p0
             val offsetCartesian = Point2D(
                 x = sampleDistanceMeters * sin(azRad),
@@ -94,10 +93,8 @@ class OpenElevationProvider(
             sampledPoints.add(pOffset)
         }
 
-        // Query all elevation points in a single batch
         val elevations = getElevations(sampledPoints)
 
-        // Compute local transverse slope percentages
         val slopes = mutableListOf<Double>()
         for (i in coordinates.indices) {
             val z0 = elevations[2 * i]
@@ -127,6 +124,7 @@ class OpenElevationProvider(
             val url = URL(OPEN_ELEVATION_URL)
             val conn = url.openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
+            conn.setRequestProperty("User-Agent", USER_AGENT)
             conn.setRequestProperty("Content-Type", "application/json")
             conn.setRequestProperty("Accept", "application/json")
             conn.connectTimeout = CONNECT_TIMEOUT_MS
@@ -144,13 +142,42 @@ class OpenElevationProvider(
                 val elevations = mutableListOf<Double>()
                 for (i in 0 until resultsArr.length()) {
                     val obj = resultsArr.getJSONObject(i)
-                    elevations.add(obj.getDouble("elevation"))
+                    elevations.add(obj.optDouble("elevation", 0.0))
                 }
                 elevations
             } else {
                 null
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun fetchBatchFromOpenTopoData(coords: List<Coordinate>): List<Double>? {
+        return try {
+            val locParam = coords.joinToString("|") { "${it.latitude},${it.longitude}" }
+            val url = URL("$OPEN_TOPO_DATA_URL?locations=$locParam")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("User-Agent", USER_AGENT)
+            conn.setRequestProperty("Accept", "application/json")
+            conn.connectTimeout = CONNECT_TIMEOUT_MS
+            conn.readTimeout = READ_TIMEOUT_MS
+
+            if (conn.responseCode == HttpURLConnection.HTTP_OK) {
+                val responseText = conn.inputStream.bufferedReader().use { it.readText() }
+                val root = JSONObject(responseText)
+                val resultsArr = root.getJSONArray("results")
+                val elevations = mutableListOf<Double>()
+                for (i in 0 until resultsArr.length()) {
+                    val obj = resultsArr.getJSONObject(i)
+                    elevations.add(obj.optDouble("elevation", 0.0))
+                }
+                elevations
+            } else {
+                null
+            }
+        } catch (_: Exception) {
             null
         }
     }
@@ -163,22 +190,23 @@ class OpenElevationProvider(
                 val url = URL(urlString)
                 val conn = url.openConnection() as HttpURLConnection
                 conn.requestMethod = "GET"
+                conn.setRequestProperty("User-Agent", USER_AGENT)
                 conn.connectTimeout = CONNECT_TIMEOUT_MS
                 conn.readTimeout = READ_TIMEOUT_MS
 
                 if (conn.responseCode == HttpURLConnection.HTTP_OK) {
                     val text = conn.inputStream.bufferedReader().use { it.readText() }
                     val json = JSONObject(text)
-                    val value = json.getJSONObject("USGS_Elevation_Point_Query_Service")
-                        .getJSONObject("Elevation_Query")
-                        .getDouble("Elevation")
+                    val value = json.optJSONObject("USGS_Elevation_Point_Query_Service")
+                        ?.optJSONObject("Elevation_Query")
+                        ?.optDouble("Elevation", 0.0) ?: 0.0
                     elevations.add(if (value == -1000000.0) 0.0 else value)
                 } else {
                     elevations.add(0.0)
                 }
             }
             elevations
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
