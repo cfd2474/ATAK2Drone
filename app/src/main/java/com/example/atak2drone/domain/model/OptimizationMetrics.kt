@@ -22,7 +22,11 @@ data class OptimizationMetrics(
     val totalTransectDistanceMeters: Double,
     val totalTurnDistanceMeters: Double,
     val totalDistanceMeters: Double,
-    val estimatedFlightDurationSeconds: Double
+    val estimatedFlightDurationSeconds: Double,
+    val slopeMode: SlopeMode = SlopeMode.OFF,
+    val minSlopePercent: Double = 0.0,
+    val maxSlopePercent: Double = 0.0,
+    val avgSlopePercent: Double = 0.0
 ) {
     val estimatedDurationMinutes: Double
         get() = estimatedFlightDurationSeconds / 60.0

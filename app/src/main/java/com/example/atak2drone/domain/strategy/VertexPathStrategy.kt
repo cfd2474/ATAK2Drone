@@ -32,35 +32,73 @@ class VertexPathStrategy : IMissionStrategy {
 
         // Calculate offset distances for exterior passes (outset)
         val extPasses = if (extOffsetMeters > 1.0) max(1, ceil(extOffsetMeters / lineSpacing).toInt()) else 0
-        val extOffsets = mutableListOf<Double>()
-        if (extPasses > 0) {
-            val step = extOffsetMeters / extPasses
-            for (p in extPasses downTo 1) {
-                extOffsets.add(p * step)
-            }
-        }
-
-        // Calculate offset distances for interior passes (inset)
         val intPasses = if (intOffsetMeters > 1.0) max(1, ceil(intOffsetMeters / lineSpacing).toInt()) else 0
-        val intOffsets = mutableListOf<Double>()
-        if (intPasses > 0) {
-            val step = intOffsetMeters / intPasses
-            for (p in 1..intPasses) {
-                intOffsets.add(-p * step)
-            }
-        }
-
-        // All target ring offsets from outermost exterior, through 0 (boundary), to innermost interior
-        val allOffsets = mutableListOf<Double>()
-        allOffsets.addAll(extOffsets)
-        allOffsets.add(0.0) // Primary boundary perimeter
-        allOffsets.addAll(intOffsets)
 
         val rings = mutableListOf<List<Point2D>>()
-        for (offset in allOffsets) {
-            val ring = GeometryUtils.offsetPolygon(localPolygon, offset)
-            if (ring != null && ring.size >= 3) {
-                rings.add(ring)
+
+        val edgeFactors = config.edgeSlopeFactors
+        val isAutoDem = config.slopeMode == com.example.atak2drone.domain.model.SlopeMode.AUTO_DEM_OPEN_SOURCE &&
+                edgeFactors != null && edgeFactors.size == localPolygon.size
+
+        if (isAutoDem && edgeFactors != null) {
+            // Convert slope percentages to slope factors k_i = cos(arctan(S_i / 100))
+            val kFactors = edgeFactors.map { slope ->
+                val ratio = slope / 100.0
+                1.0 / kotlin.math.sqrt(1.0 + ratio * ratio)
+            }
+
+            // Exterior passes (outset)
+            if (extPasses > 0) {
+                val baseExtMeters = config.perimeterExteriorOffsetMeters
+                for (p in extPasses downTo 1) {
+                    val ratio = p.toDouble() / extPasses
+                    val perEdgeOffsets = kFactors.map { k -> ratio * baseExtMeters * k }
+                    val ring = GeometryUtils.offsetPolygonVariable(localPolygon, perEdgeOffsets)
+                    if (ring != null && ring.size >= 3) rings.add(ring)
+                }
+            }
+
+            // Primary perimeter ring (0 offset)
+            rings.add(localPolygon)
+
+            // Interior passes (inset)
+            if (intPasses > 0) {
+                val baseIntMeters = config.perimeterInteriorOffsetMeters
+                for (p in 1..intPasses) {
+                    val ratio = p.toDouble() / intPasses
+                    val perEdgeOffsets = kFactors.map { k -> -ratio * baseIntMeters * k }
+                    val ring = GeometryUtils.offsetPolygonVariable(localPolygon, perEdgeOffsets)
+                    if (ring != null && ring.size >= 3) rings.add(ring)
+                }
+            }
+        } else {
+            // Standard scalar offsetting (OFF / Flat 2D)
+            val extOffsets = mutableListOf<Double>()
+            if (extPasses > 0) {
+                val step = extOffsetMeters / extPasses
+                for (p in extPasses downTo 1) {
+                    extOffsets.add(p * step)
+                }
+            }
+
+            val intOffsets = mutableListOf<Double>()
+            if (intPasses > 0) {
+                val step = intOffsetMeters / intPasses
+                for (p in 1..intPasses) {
+                    intOffsets.add(-p * step)
+                }
+            }
+
+            val allOffsets = mutableListOf<Double>()
+            allOffsets.addAll(extOffsets)
+            allOffsets.add(0.0)
+            allOffsets.addAll(intOffsets)
+
+            for (offset in allOffsets) {
+                val ring = GeometryUtils.offsetPolygon(localPolygon, offset)
+                if (ring != null && ring.size >= 3) {
+                    rings.add(ring)
+                }
             }
         }
 
@@ -106,6 +144,10 @@ class VertexPathStrategy : IMissionStrategy {
         val turnTime = totalTurns * config.turnTimePenaltySeconds
         val totalDuration = flightTime + turnTime
 
+        val minSlope = edgeFactors?.minOrNull() ?: 0.0
+        val maxSlope = edgeFactors?.maxOrNull() ?: 0.0
+        val avgSlope = edgeFactors?.average() ?: 0.0
+
         val metrics = OptimizationMetrics(
             optimalAngleDegrees = 0.0,
             isOptimized = false,
@@ -115,7 +157,11 @@ class VertexPathStrategy : IMissionStrategy {
             totalTransectDistanceMeters = totalDistanceMeters,
             totalTurnDistanceMeters = 0.0,
             totalDistanceMeters = totalDistanceMeters,
-            estimatedFlightDurationSeconds = totalDuration
+            estimatedFlightDurationSeconds = totalDuration,
+            slopeMode = if (isAutoDem) com.example.atak2drone.domain.model.SlopeMode.AUTO_DEM_OPEN_SOURCE else com.example.atak2drone.domain.model.SlopeMode.OFF,
+            minSlopePercent = minSlope,
+            maxSlopePercent = maxSlope,
+            avgSlopePercent = avgSlope
         )
 
         return MissionPlan(

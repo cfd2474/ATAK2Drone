@@ -196,6 +196,66 @@
                 android:max="500"
                 android:progress="50"
                 android:contentDescription="@string/desc_slider_exterior" />
+
+            <!-- Slope-Corrected Ground Distance Options -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Slope Correction Mode"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:layout_marginTop="12dp" />
+
+            <RadioGroup
+                android:id="@+id/radioGroupSlopeMode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="4dp">
+
+                <RadioButton
+                    android:id="@+id/radioSlopeOff"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Off (Flat 2D Planar Distance)"
+                    android:checked="true"
+                    android:textSize="12sp" />
+
+                <RadioButton
+                    android:id="@+id/radioSlopeAutoDem"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Auto DEM Slope (Open-Source Tangent Gradient)"
+                    android:textSize="12sp" />
+            </RadioGroup>
+
+            <TextView
+                android:id="@+id/textViewSlopeNetworkTip"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textColor="#D81B60"
+                android:textStyle="italic"
+                android:layout_marginTop="2dp"
+                android:text="ℹ Auto DEM requires an active network connection for elevation lookup." />
+
+            <TextView
+                android:id="@+id/textViewSlopeHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:textColor="#388E3C"
+                android:layout_marginTop="4dp"
+                android:text="Off: Target ground distance matches 2D map offset." />
+
+            <ProgressBar
+                android:id="@+id/progressBarSlope"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:visibility="gone"
+                android:layout_marginTop="4dp" />
         </LinearLayout>
 
         <!-- 5. Altitude Presets & Custom Input -->

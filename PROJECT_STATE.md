@@ -1,9 +1,9 @@
 # ATAK2Drone — Project State
 
 ## 1. Project Status Overview
-- **Current Version**: **v2.0.2** (versionCode = 2)
-- **Current Goal**: Build and publish digitally signed public APK releases for all supported DJI enterprise variants (**M30/M30T**, **M3T**, **M300/M350**, **M4T**) with version footers and categorized `releases/current/` and `releases/archive/` folders.
-- **Current Phase**: Released & Published (`v2.0.2` tagged and pushed to GitHub).
+- **Current Version**: **v2.1.0-dev**
+- **Current Goal**: Refine Slope-Corrected Ground Distance to Auto DEM only, add network connection tip badge, implement Mission Processing Progress Dialog, and handle network DEM fetch errors with automatic fallback to flat 2D planar mode.
+- **Current Phase**: Chunk 6 Implementation Completed & Verified with Automated Unit Test Suite.
 
 ## 2. Completed Steps
 - Configured Android SDK path in `local.properties` and verified JDK 17 environment.
@@ -15,13 +15,18 @@
 - Implemented dynamic `WpmlBuilder`, `KmzPackager`, `KmlParser`, and refactored `MissionController`.
 - Implemented `matrice30` product flavor in `app/build.gradle.kts` (`DRONE_ENUM = 67`, `DRONE_SUB_ENUM = 1`, `PAYLOAD_ENUM = 53`).
 - Added real-time missing requirements warning indicator next to **Generate Flight KMZ** button.
-- Updated versioning to **v2.0.2** (`versionCode = 2`) with version footers in `activity_main.xml` and mission metrics output.
-- Reorganized `releases/` into `releases/current/` and `releases/archive/`.
-- Configured secure keystore signing in `local.properties` (never committed to git) and generated verified signed release APKs.
-- Published v2.0.2 release APKs to `releases/current/` in git repository, tagged `v2.0.2`, and pushed to remote `dev` and `master` branches.
+- Published signed v2.0.2 releases to `releases/current/` on `dev` and `master`.
+- Implemented `IElevationProvider`, `OpenElevationProvider`, and `ElevationCache` for querying open-source terrain elevation data.
+- Implemented `GeometryUtils.offsetPolygonVariable` supporting per-edge variable horizontal offset scaling.
+- Updated `SurveyConfig.kt`, `OptimizationMetrics.kt`, and `VertexPathStrategy.kt` to compute local transverse slope factors along normal vectors and generate variable-width perimeter rings.
+- Simplified slope selection to **Off (Flat 2D)** and **Auto DEM (Open-Source Tangent Gradient)**.
+- Added explicit network connection tip label next to Auto DEM selection: `"(Requires active network connection for elevation lookup)"`.
+- Implemented Mission Processing Progress Dialog (`AlertDialog`) with live step updates (`Reading KML` $\rightarrow$ `Querying DEM` $\rightarrow$ `Packing KMZ`).
+- Implemented automatic network error handling that notifies the user and gracefully reverts to Flat 2D mission mode if open-source DEM elevation fetching fails.
+- Created `DynamicSlopeCorrectionTest.kt` unit test suite and verified complete build & test suite (`./gradlew test` succeeded with 0 errors).
 
 ## 3. In Progress
-- All requested features, builds, and releases complete.
+- Final validation and release packaging for v2.1.0 release binaries.
 
 ## 4. Architectural Constraints & Rules
 - **No Direct Drone Connection**: ATAK2Drone generates standalone DJI WPML `.kmz` mission packages imported by DJI Pilot 2 (`com.dji.industry.pilot`).
@@ -37,8 +42,14 @@
 | Strategy Pattern for Flight Planning | `IMissionStrategy` enables seamless swapping between `VertexPathStrategy` (perimeter fly-around) and `GridSurveyStrategy` (optimal lawnmower survey). |
 | Preserve 200ft/400ft Presets + Add Free-Type Input | Preserves rapid field deployment via 200 ft / 400 ft quick-select options while giving operators flexibility to input any custom altitude. |
 | Concentric Polygon Offset Buffer Strategy | Inset / Outset parallel edge offset with miter limit clamping allows generating multiple perimeter survey rings covering variable corridor widths. |
-| Synchronized Slider & Typable EditText Controls | Operators can swiftly drag sliders or type exact values with instant two-way synchronization, defaulting to 100 ft Interior and 50 ft Exterior. |
-| DocumentBuilderFactory for KmlParser | Standard Java XML parsing provides universal execution in pure JVM test environments and Android runtime without external pull-parser mocks. |
-| DJI M30 / M30T Source of Truth Enums | `DRONE_ENUM = 67`, `DRONE_SUB_ENUM = 1`, `PAYLOAD_ENUM = 53` ensure DJI Pilot 2 recognizes the mission package natively for Matrice 30 series aircraft. |
-| Dynamic Secure Keystore Signing | Read release signing credentials from unversioned `local.properties` to ensure zero secret leakage to git repositories. |
-| Releases Current / Archive Directory Structure | Cleanly partitions the active latest releases in `releases/current/` from prior revisions in `releases/archive/` while keeping binaries easily accessible. |
+| Local Tangent Slope Correction | Computes terrain elevation gradient along the normal vector perpendicular to each perimeter edge segment, scaling horizontal offsets locally ($D_i = D_{\text{ground}} \cdot \cos(\alpha_i)$) to handle changing terrain slopes throughout the flight. |
+| Auto DEM Only + Network Tip | Simplifies UI by removing manual slope controls while clearly informing operators that dynamic terrain slope correction requires an active network connection. |
+| Mission Processing Progress Dialog & Fallback | Displays live step status during KMZ generation and automatically falls back to standard 2D flat mission if network elevation lookup is unavailable. |
+
+## 6. Task Decomposition (Chunk 6: Processing Dialog & Fallback Refinement)
+- [x] Step 1: Simplify `SlopeMode.kt`, `SurveyConfig.kt`, and `VertexPathStrategy.kt` to support `OFF` vs `AUTO_DEM_OPEN_SOURCE`.
+- [x] Step 2: Simplify `activity_main.xml` layout to remove manual slope controls, add Auto DEM check with network connection tip badge.
+- [x] Step 3: Implement Mission Processing Progress Dialog (`AlertDialog`) in `MainActivity.kt` with live step progress text.
+- [x] Step 4: Add network error catch and fallback logic in `MainActivity.kt` to revert to flat 2D planar mode when DEM fetch fails.
+- [x] Step 5: Update `DynamicSlopeCorrectionTest.kt` unit test suite to verify simplified slope modes and fallback handling.
+- [x] Step 6: Verify build (`./gradlew test assembleDebug`) and update `PROJECT_STATE.md`.

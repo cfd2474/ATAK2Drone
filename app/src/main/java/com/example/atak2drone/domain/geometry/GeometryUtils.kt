@@ -288,4 +288,84 @@ object GeometryUtils {
 
         return offsetVertices
     }
+
+    /**
+     * Offsets a 2D closed polygon by a list of variable per-edge offsets [offsetMetersList] in Cartesian coordinates.
+     * Each edge [i] is displaced by [offsetMetersList[i]] along its outward normal.
+     */
+    fun offsetPolygonVariable(
+        polygon: List<Point2D>,
+        offsetMetersList: List<Double>,
+        miterLimit: Double = 3.0
+    ): List<Point2D>? {
+        val n = polygon.size
+        if (n < 3 || offsetMetersList.size != n) return null
+
+        val signedArea = polygonSignedArea(polygon)
+        val ccwPolygon = if (signedArea < 0) polygon.reversed() else polygon
+        val ccwOffsets = if (signedArea < 0) offsetMetersList.reversed() else offsetMetersList
+
+        data class OffsetLine(val p1: Point2D, val p2: Point2D, val dir: Point2D, val normal: Point2D, val offset: Double)
+        val lines = ArrayList<OffsetLine>(n)
+
+        for (i in 0 until n) {
+            val p1 = ccwPolygon[i]
+            val p2 = ccwPolygon[(i + 1) % n]
+            val dx = p2.x - p1.x
+            val dy = p2.y - p1.y
+            val len = sqrt(dx * dx + dy * dy)
+            if (len < 1e-6) continue
+
+            val dir = Point2D(dx / len, dy / len)
+            val normal = Point2D(dir.y, -dir.x)
+            val offsetMeters = ccwOffsets[i]
+
+            val offP1 = Point2D(p1.x + offsetMeters * normal.x, p1.y + offsetMeters * normal.y)
+            val offP2 = Point2D(p2.x + offsetMeters * normal.x, p2.y + offsetMeters * normal.y)
+
+            lines.add(OffsetLine(offP1, offP2, dir, normal, offsetMeters))
+        }
+
+        if (lines.size < 3) return null
+
+        val offsetVertices = ArrayList<Point2D>(lines.size)
+        val lineCount = lines.size
+
+        for (i in 0 until lineCount) {
+            val prevLine = lines[(i - 1 + lineCount) % lineCount]
+            val curLine = lines[i]
+            val originalVertex = ccwPolygon[i]
+
+            val det = prevLine.dir.x * curLine.dir.y - prevLine.dir.y * curLine.dir.x
+
+            val newVertex = if (abs(det) > 1e-6) {
+                val dx = curLine.p1.x - prevLine.p1.x
+                val dy = curLine.p1.y - prevLine.p1.y
+                val t = (dx * curLine.dir.y - dy * curLine.dir.x) / det
+                val intersect = Point2D(prevLine.p1.x + t * prevLine.dir.x, prevLine.p1.y + t * prevLine.dir.y)
+
+                val avgOffset = (abs(prevLine.offset) + abs(curLine.offset)) / 2.0
+                val miterDist = intersect.distanceTo(originalVertex)
+                val maxAllowed = avgOffset * miterLimit
+                if (miterDist > maxAllowed && miterDist > 1e-6) {
+                    val scale = maxAllowed / miterDist
+                    Point2D(
+                        originalVertex.x + (intersect.x - originalVertex.x) * scale,
+                        originalVertex.y + (intersect.y - originalVertex.y) * scale
+                    )
+                } else {
+                    intersect
+                }
+            } else {
+                curLine.p1
+            }
+
+            offsetVertices.add(newVertex)
+        }
+
+        val newArea = polygonSignedArea(offsetVertices)
+        if (newArea <= 0) return null
+
+        return offsetVertices
+    }
 }
