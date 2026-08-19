@@ -22,7 +22,9 @@ import com.example.atak2drone.domain.model.SlopeMode
 import com.example.atak2drone.domain.model.SurveyConfig
 import com.example.atak2drone.model.CameraType
 import com.example.atak2drone.parser.KmlParser
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 
@@ -530,17 +532,19 @@ class MainActivity : AppCompatActivity() {
                     updateMissionProgressStatus("• Step 2/3: Querying open-source DEM terrain slope...")
                     try {
                         edgeSlopeFactors = fetchPerimeterEdgeSlopes(polygon)
-                        if (edgeSlopeFactors.isEmpty() || edgeSlopeFactors.all { it == 0.0 }) {
-                            throw IOException("Elevation data returned empty or zero.")
+                        if (edgeSlopeFactors.isEmpty()) {
+                            throw IOException("Elevation query returned no slope data.")
                         }
                     } catch (e: Exception) {
                         effectiveSlopeMode = SlopeMode.OFF
                         edgeSlopeFactors = null
-                        Toast.makeText(
-                            this@MainActivity,
-                            "⚠️ Network DEM query unavailable: ${e.message ?: "Connection error"}. Reverting to Flat 2D mission.",
-                            Toast.LENGTH_LONG
-                        ).show()
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "⚠️ Network DEM query unavailable: ${e.message ?: "Connection error"}. Reverting to Flat 2D mission.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
                     }
                 }
 

@@ -9,25 +9,44 @@ import org.json.JSONObject
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 
 /**
  * Implementation of [IElevationProvider] querying open-source elevation APIs
- * (Open-Elevation REST API, Open-Topo-Data API, and USGS 3DEP API) with local caching.
+ * (Open-Meteo DEM API, Open-Topo-Data API, USGS 3DEP API, and Open-Elevation REST API) with local caching.
  */
 class OpenElevationProvider(
     private val cache: ElevationCache = ElevationCache()
 ) : IElevationProvider {
 
     companion object {
-        private const val OPEN_ELEVATION_URL = "https://api.open-elevation.com/api/v1/lookup"
+        private const val OPEN_METEO_URL = "https://api.open-meteo.com/v1/elevation"
         private const val OPEN_TOPO_DATA_URL = "https://api.opentopodata.org/v1/srtm30m"
         private const val USGS_ELEVATION_URL = "https://epqs.nationalmap.gov/v1/json"
+        private const val OPEN_ELEVATION_URL = "https://api.open-elevation.com/api/v1/lookup"
         private const val USER_AGENT = "ATAK2Drone/2.1.0 (Android Mobile)"
         private const val CONNECT_TIMEOUT_MS = 8000
         private const val READ_TIMEOUT_MS = 8000
+        private const val TAG = "OpenElevationProvider"
+    }
+
+    private fun logDebug(msg: String) {
+        try {
+            android.util.Log.d(TAG, msg)
+        } catch (_: Exception) {
+            println("[$TAG] $msg")
+        }
+    }
+
+    private fun logWarn(msg: String) {
+        try {
+            android.util.Log.w(TAG, msg)
+        } catch (_: Exception) {
+            println("[$TAG WARN] $msg")
+        }
     }
 
     override suspend fun getElevations(coordinates: List<Coordinate>): List<Double> = withContext(Dispatchers.IO) {
@@ -51,11 +70,21 @@ class OpenElevationProvider(
             return@withContext results
         }
 
-        // Query missing coordinates across providers (Open-Elevation -> Open-Topo-Data -> USGS)
-        val fetchedElevations = fetchBatchFromOpenElevation(missingCoords)
-            ?: fetchBatchFromOpenTopoData(missingCoords)
-            ?: fetchFallbackFromUsgs(missingCoords)
-            ?: throw IOException("Elevation APIs unreachable (check internet connection).")
+        logDebug("Querying elevation for ${missingCoords.size} uncached coordinates...")
+
+        // Process missing coordinates in chunks of 30 to respect provider limits
+        val chunkSize = 30
+        val fetchedElevations = mutableListOf<Double>()
+
+        for (chunkStart in missingCoords.indices step chunkSize) {
+            val chunk = missingCoords.subList(chunkStart, minOf(chunkStart + chunkSize, missingCoords.size))
+            val chunkElevations = fetchBatchFromOpenMeteo(chunk)
+                ?: fetchBatchFromOpenTopoData(chunk)
+                ?: fetchFallbackFromUsgs(chunk)
+                ?: fetchBatchFromOpenElevation(chunk)
+                ?: throw IOException("Elevation APIs unreachable (check internet connection).")
+            fetchedElevations.addAll(chunkElevations)
+        }
 
         for (k in missingCoords.indices) {
             val idx = missingIndices[k]
@@ -109,6 +138,119 @@ class OpenElevationProvider(
         slopes
     }
 
+    /**
+     * Provider #1: Open-Meteo DEM Elevation API (Global 90m/30m, fast & free batch GET)
+     */
+    private fun fetchBatchFromOpenMeteo(coords: List<Coordinate>): List<Double>? {
+        return try {
+            val lats = coords.joinToString(",") { String.format(Locale.US, "%.6f", it.latitude) }
+            val lons = coords.joinToString(",") { String.format(Locale.US, "%.6f", it.longitude) }
+            val url = URL("$OPEN_METEO_URL?latitude=$lats&longitude=$lons")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("User-Agent", USER_AGENT)
+            conn.setRequestProperty("Accept", "application/json")
+            conn.connectTimeout = CONNECT_TIMEOUT_MS
+            conn.readTimeout = READ_TIMEOUT_MS
+
+            if (conn.responseCode == HttpURLConnection.HTTP_OK) {
+                val responseText = conn.inputStream.bufferedReader().use { it.readText() }
+                val root = JSONObject(responseText)
+                val elevArray = root.optJSONArray("elevation") ?: return null
+                val elevations = mutableListOf<Double>()
+                for (i in 0 until elevArray.length()) {
+                    val valDouble = elevArray.optDouble(i, 0.0)
+                    elevations.add(if (valDouble.isNaN()) 0.0 else valDouble)
+                }
+                logDebug("Fetched ${elevations.size} elevations from Open-Meteo DEM")
+                if (elevations.size == coords.size) elevations else null
+            } else {
+                logWarn("Open-Meteo returned HTTP ${conn.responseCode}")
+                null
+            }
+        } catch (e: Exception) {
+            logWarn("Open-Meteo query failed: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Provider #2: Open-Topo-Data API (SRTM 30m dataset)
+     */
+    private fun fetchBatchFromOpenTopoData(coords: List<Coordinate>): List<Double>? {
+        return try {
+            val locParam = coords.joinToString("|") {
+                String.format(Locale.US, "%.6f,%.6f", it.latitude, it.longitude)
+            }
+            val url = URL("$OPEN_TOPO_DATA_URL?locations=$locParam")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "GET"
+            conn.setRequestProperty("User-Agent", USER_AGENT)
+            conn.setRequestProperty("Accept", "application/json")
+            conn.connectTimeout = CONNECT_TIMEOUT_MS
+            conn.readTimeout = READ_TIMEOUT_MS
+
+            if (conn.responseCode == HttpURLConnection.HTTP_OK) {
+                val responseText = conn.inputStream.bufferedReader().use { it.readText() }
+                val root = JSONObject(responseText)
+                val resultsArr = root.getJSONArray("results")
+                val elevations = mutableListOf<Double>()
+                for (i in 0 until resultsArr.length()) {
+                    val obj = resultsArr.getJSONObject(i)
+                    elevations.add(obj.optDouble("elevation", 0.0))
+                }
+                logDebug("Fetched ${elevations.size} elevations from Open-Topo-Data")
+                if (elevations.size == coords.size) elevations else null
+            } else {
+                logWarn("Open-Topo-Data returned HTTP ${conn.responseCode}")
+                null
+            }
+        } catch (e: Exception) {
+            logWarn("Open-Topo-Data query failed: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Provider #3: USGS 3DEP National Map Elevation API (v1 json structure)
+     */
+    private fun fetchFallbackFromUsgs(coords: List<Coordinate>): List<Double>? {
+        return try {
+            val elevations = mutableListOf<Double>()
+            for (c in coords) {
+                val urlString = "$USGS_ELEVATION_URL?x=${c.longitude}&y=${c.latitude}&units=Meters"
+                val url = URL(urlString)
+                val conn = url.openConnection() as HttpURLConnection
+                conn.requestMethod = "GET"
+                conn.setRequestProperty("User-Agent", USER_AGENT)
+                conn.connectTimeout = CONNECT_TIMEOUT_MS
+                conn.readTimeout = READ_TIMEOUT_MS
+
+                if (conn.responseCode == HttpURLConnection.HTTP_OK) {
+                    val text = conn.inputStream.bufferedReader().use { it.readText() }
+                    val json = JSONObject(text)
+                    val valStr = json.optString("value", "")
+                    val value = valStr.toDoubleOrNull()
+                        ?: json.optJSONObject("USGS_Elevation_Point_Query_Service")
+                            ?.optJSONObject("Elevation_Query")
+                            ?.optDouble("Elevation", 0.0)
+                        ?: 0.0
+                    elevations.add(if (value == -1000000.0 || value.isNaN()) 0.0 else value)
+                } else {
+                    elevations.add(0.0)
+                }
+            }
+            logDebug("Fetched ${elevations.size} elevations from USGS 3DEP")
+            if (elevations.size == coords.size) elevations else null
+        } catch (e: Exception) {
+            logWarn("USGS 3DEP query failed: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Provider #4: Open-Elevation REST API
+     */
     private fun fetchBatchFromOpenElevation(coords: List<Coordinate>): List<Double>? {
         return try {
             val jsonLocations = JSONObject()
@@ -144,70 +286,16 @@ class OpenElevationProvider(
                     val obj = resultsArr.getJSONObject(i)
                     elevations.add(obj.optDouble("elevation", 0.0))
                 }
-                elevations
+                logDebug("Fetched ${elevations.size} elevations from Open-Elevation")
+                if (elevations.size == coords.size) elevations else null
             } else {
+                logWarn("Open-Elevation returned HTTP ${conn.responseCode}")
                 null
             }
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun fetchBatchFromOpenTopoData(coords: List<Coordinate>): List<Double>? {
-        return try {
-            val locParam = coords.joinToString("|") { "${it.latitude},${it.longitude}" }
-            val url = URL("$OPEN_TOPO_DATA_URL?locations=$locParam")
-            val conn = url.openConnection() as HttpURLConnection
-            conn.requestMethod = "GET"
-            conn.setRequestProperty("User-Agent", USER_AGENT)
-            conn.setRequestProperty("Accept", "application/json")
-            conn.connectTimeout = CONNECT_TIMEOUT_MS
-            conn.readTimeout = READ_TIMEOUT_MS
-
-            if (conn.responseCode == HttpURLConnection.HTTP_OK) {
-                val responseText = conn.inputStream.bufferedReader().use { it.readText() }
-                val root = JSONObject(responseText)
-                val resultsArr = root.getJSONArray("results")
-                val elevations = mutableListOf<Double>()
-                for (i in 0 until resultsArr.length()) {
-                    val obj = resultsArr.getJSONObject(i)
-                    elevations.add(obj.optDouble("elevation", 0.0))
-                }
-                elevations
-            } else {
-                null
-            }
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun fetchFallbackFromUsgs(coords: List<Coordinate>): List<Double>? {
-        return try {
-            val elevations = mutableListOf<Double>()
-            for (c in coords) {
-                val urlString = "$USGS_ELEVATION_URL?x=${c.longitude}&y=${c.latitude}&units=Meters"
-                val url = URL(urlString)
-                val conn = url.openConnection() as HttpURLConnection
-                conn.requestMethod = "GET"
-                conn.setRequestProperty("User-Agent", USER_AGENT)
-                conn.connectTimeout = CONNECT_TIMEOUT_MS
-                conn.readTimeout = READ_TIMEOUT_MS
-
-                if (conn.responseCode == HttpURLConnection.HTTP_OK) {
-                    val text = conn.inputStream.bufferedReader().use { it.readText() }
-                    val json = JSONObject(text)
-                    val value = json.optJSONObject("USGS_Elevation_Point_Query_Service")
-                        ?.optJSONObject("Elevation_Query")
-                        ?.optDouble("Elevation", 0.0) ?: 0.0
-                    elevations.add(if (value == -1000000.0) 0.0 else value)
-                } else {
-                    elevations.add(0.0)
-                }
-            }
-            elevations
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            logWarn("Open-Elevation query failed: ${e.message}")
             null
         }
     }
 }
+
