@@ -373,7 +373,7 @@
             android:id="@+id/textViewNote"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="v2.1.4 • Generates optimal DJI WPML flight packages for DJI Pilot 2"
+            android:text="v2.1.5 • Generates optimal DJI WPML flight packages for DJI Pilot 2"
             android:textSize="12sp"
             android:textColor="@android:color/darker_gray"
             android:gravity="center"

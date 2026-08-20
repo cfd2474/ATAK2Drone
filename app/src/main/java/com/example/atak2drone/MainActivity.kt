@@ -684,7 +684,7 @@ class MainActivity : AppCompatActivity() {
             normalAzimuths.add(azDeg)
         }
 
-        val slopes = elevationProvider.getTransverseSlopes(midpoints, normalAzimuths, sampleDistanceMeters = 10.0)
+        val slopes = elevationProvider.getTransverseSlopes(midpoints, normalAzimuths, sampleDistanceMeters = 30.0)
         return if (ccw) slopes else slopes.reversed()
     }
 

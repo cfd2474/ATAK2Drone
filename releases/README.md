@@ -4,7 +4,7 @@ This directory manages digitally signed, production-ready release builds of **AT
 
 ---
 
-## Current Release: **v2.1.4**
+## Current Release: **v2.1.5**
 
 Located in [`releases/current/`](./current/):
 
@@ -21,43 +21,19 @@ Located in [`releases/current/`](./current/):
 
 Previous release binaries are archived in subfolders labeled by version number inside [`releases/archive/`](./archive/):
 
+- **v2.1.4**: [`releases/archive/v2.1.4/`](./archive/v2.1.4/)
 - **v2.1.3**: [`releases/archive/v2.1.3/`](./archive/v2.1.3/)
-  - `ATAK2M30-release.apk`
-  - `ATAK2M3T-release.apk`
-  - `ATAK2M300M350-release.apk`
-  - `ATAK2M4T-release.apk`
-
 - **v2.1.2**: [`releases/archive/v2.1.2/`](./archive/v2.1.2/)
-  - `ATAK2M30-release.apk`
-  - `ATAK2M3T-release.apk`
-  - `ATAK2M300M350-release.apk`
-  - `ATAK2M4T-release.apk`
-
 - **v2.1.1**: [`releases/archive/v2.1.1/`](./archive/v2.1.1/)
-  - `ATAK2M30-release.apk`
-  - `ATAK2M3T-release.apk`
-  - `ATAK2M300M350-release.apk`
-  - `ATAK2M4T-release.apk`
-
 - **v2.1.0**: [`releases/archive/v2.1.0/`](./archive/v2.1.0/)
-  - `ATAK2M30-release.apk`
-  - `ATAK2M3T-release.apk`
-  - `ATAK2M300M350-release.apk`
-  - `ATAK2M4T-release.apk`
-
 - **v2.0.2**: [`releases/archive/v2.0.2/`](./archive/v2.0.2/)
-  - `ATAK2M30-release.apk`
-  - `ATAK2M3T-release.apk`
-  - `ATAK2M300M350-release.apk`
-  - `ATAK2M4T-release.apk`
 
 ---
 
-## Key Features in v2.1.4
+## Key Features in v2.1.5
+- **Eliminated DEM Grid Quantization Artifacts**: Upgraded slope calculation to use a 60m symmetric central-difference sampling baseline ($30\text{m}$ outward + $30\text{m}$ inward), eliminating false slope spikes caused by 30m DEM grid cell boundary step changes.
+- **Perimeter 3-Tap Weighted Moving Average Slope Smoothing**: Smooths calculated slopes across adjacent perimeter sub-segments ($\hat{S}_i = 0.25 S_{i-1} + 0.50 S_i + 0.25 S_{i+1}$), producing clean, parallel concentric perimeter rings without unnatural pinching or converging lines.
 - **Segment-Maximum Terrain Height Tracking**: Evaluates $Z_{\text{max\_ground}}$ across every sub-segment and assigns 3D waypoint altitudes $H_{\text{waypoint}} = H_{\text{target}} + \Delta Z_{\text{rise}}$, ensuring the drone maintains at least $H_{\text{target}}$ above ground throughout every flight segment without stopping or hovering.
-- **Drone GPS Elevation Alignment**: References terrain rise to the survey area baseline $Z_{\text{poly\_min}}$, allowing the drone's onboard GPS/RTK receiver to dynamically anchor its launch altitude without requiring a pre-defined takeoff location.
-- **100ft Baseline Edge Subdivision**: Subdivides input boundary polygons into sub-segments of $\le 100\text{ feet}$ ($30.48\text{ meters}$) before slope/elevation calculation.
-- **Strict Release Version Sequencing**: Version bumped to `v2.1.4` (`versionCode = 7`), preserving `v2.1.3` release binaries in `releases/archive/v2.1.3/`.
 - **100% Automated Datum Conversion Protocol**: Auto-detects and transforms imported KML input coordinates (NAD83, NAD27, GCJ02) to standard WGS 84 (`<wpml:useGcj02>0</wpml:useGcj02>`) behind the scenes without user setup.
 
 ---

@@ -106,36 +106,52 @@ class OpenElevationProvider(
         }
         if (coordinates.isEmpty()) return@withContext emptyList()
 
+        val dist = if (sampleDistanceMeters <= 10.0) 30.0 else sampleDistanceMeters
+
         val sampledPoints = mutableListOf<Coordinate>()
         for (i in coordinates.indices) {
             val p0 = coordinates[i]
             val azRad = Math.toRadians(normalAzimuthsDeg[i])
 
             val origin = p0
-            val offsetCartesian = Point2D(
-                x = sampleDistanceMeters * sin(azRad),
-                y = sampleDistanceMeters * cos(azRad)
+            val outCartesian = Point2D(
+                x = dist * sin(azRad),
+                y = dist * cos(azRad)
             )
-            val pOffset = GeometryUtils.projectToGeographic(offsetCartesian, origin)
+            val inCartesian = Point2D(
+                x = -dist * sin(azRad),
+                y = -dist * cos(azRad)
+            )
+            val pOut = GeometryUtils.projectToGeographic(outCartesian, origin)
+            val pIn = GeometryUtils.projectToGeographic(inCartesian, origin)
 
-            sampledPoints.add(p0)
-            sampledPoints.add(pOffset)
+            sampledPoints.add(pOut)
+            sampledPoints.add(pIn)
         }
 
         val elevations = getElevations(sampledPoints)
+        val n = coordinates.size
 
-        val slopes = mutableListOf<Double>()
-        for (i in coordinates.indices) {
-            val z0 = elevations[2 * i]
-            val zOffset = elevations[2 * i + 1]
-            val deltaZ = abs(zOffset - z0)
+        val rawSlopes = DoubleArray(n)
+        for (i in 0 until n) {
+            val zOut = elevations[2 * i]
+            val zIn = elevations[2 * i + 1]
+            val deltaZ = abs(zOut - zIn)
 
-            val slopeRatio = deltaZ / sampleDistanceMeters
-            val slopePercent = slopeRatio * 100.0
-            slopes.add(slopePercent)
+            val slopeRatio = deltaZ / (2.0 * dist)
+            rawSlopes[i] = slopeRatio * 100.0
         }
 
-        slopes
+        // Apply 3-tap weighted moving average smoothing along the perimeter loop (0.25, 0.50, 0.25)
+        val smoothedSlopes = MutableList(n) { 0.0 }
+        for (i in 0 until n) {
+            val prev = rawSlopes[(i - 1 + n) % n]
+            val curr = rawSlopes[i]
+            val next = rawSlopes[(i + 1) % n]
+            smoothedSlopes[i] = 0.25 * prev + 0.50 * curr + 0.25 * next
+        }
+
+        smoothedSlopes
     }
 
     /**
