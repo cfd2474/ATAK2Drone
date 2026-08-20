@@ -26,8 +26,8 @@ android {
         applicationId = "com.example.atak2drone" // overridden by flavors below
         minSdk = 26
         targetSdk = 36
-        versionCode = 6
-        versionName = "2.1.3"
+        versionCode = 7
+        versionName = "2.1.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

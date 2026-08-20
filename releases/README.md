@@ -4,7 +4,7 @@ This directory manages digitally signed, production-ready release builds of **AT
 
 ---
 
-## Current Release: **v2.1.3**
+## Current Release: **v2.1.4**
 
 Located in [`releases/current/`](./current/):
 
@@ -20,6 +20,12 @@ Located in [`releases/current/`](./current/):
 ## Archived Releases
 
 Previous release binaries are archived in subfolders labeled by version number inside [`releases/archive/`](./archive/):
+
+- **v2.1.3**: [`releases/archive/v2.1.3/`](./archive/v2.1.3/)
+  - `ATAK2M30-release.apk`
+  - `ATAK2M3T-release.apk`
+  - `ATAK2M300M350-release.apk`
+  - `ATAK2M4T-release.apk`
 
 - **v2.1.2**: [`releases/archive/v2.1.2/`](./archive/v2.1.2/)
   - `ATAK2M30-release.apk`
@@ -47,10 +53,11 @@ Previous release binaries are archived in subfolders labeled by version number i
 
 ---
 
-## Key Features in v2.1.3
-- **100ft Minimum Baseline Polygon Subdivision**: All input boundary polygons are automatically subdivided into equal sub-segments of at most **$100\text{ feet}$ ($30.48\text{ meters}$)** before elevation lookup, while steep slope zones ($\ge 50\%$) are adaptively refined to **$30\text{ feet}$ ($9.144\text{ meters}$)** micro-segments.
-- **Strict Release Version Sequencing**: Version bumped to `v2.1.3` (`versionCode = 6`), preserving `v2.1.2` release binaries in `releases/archive/v2.1.2/`.
-- **Dynamic User-Agent & Version Footers**: Bound application footers and DEM API User-Agent header dynamically to `BuildConfig.VERSION_NAME`.
+## Key Features in v2.1.4
+- **Segment-Maximum Terrain Height Tracking**: Evaluates $Z_{\text{max\_ground}}$ across every sub-segment and assigns 3D waypoint altitudes $H_{\text{waypoint}} = H_{\text{target}} + \Delta Z_{\text{rise}}$, ensuring the drone maintains at least $H_{\text{target}}$ above ground throughout every flight segment without stopping or hovering.
+- **Drone GPS Elevation Alignment**: References terrain rise to the survey area baseline $Z_{\text{poly\_min}}$, allowing the drone's onboard GPS/RTK receiver to dynamically anchor its launch altitude without requiring a pre-defined takeoff location.
+- **100ft Baseline Edge Subdivision**: Subdivides input boundary polygons into sub-segments of $\le 100\text{ feet}$ ($30.48\text{ meters}$) before slope/elevation calculation.
+- **Strict Release Version Sequencing**: Version bumped to `v2.1.4` (`versionCode = 7`), preserving `v2.1.3` release binaries in `releases/archive/v2.1.3/`.
 - **100% Automated Datum Conversion Protocol**: Auto-detects and transforms imported KML input coordinates (NAD83, NAD27, GCJ02) to standard WGS 84 (`<wpml:useGcj02>0</wpml:useGcj02>`) behind the scenes without user setup.
 
 ---

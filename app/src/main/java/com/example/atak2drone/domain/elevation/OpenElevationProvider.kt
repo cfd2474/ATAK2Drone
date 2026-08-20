@@ -139,6 +139,70 @@ class OpenElevationProvider(
     }
 
     /**
+     * Computes segment-maximum ground terrain heights for a polygon and evaluates 3D flight altitudes
+     * per waypoint relative to the target flight altitude [targetAltitudeMeters].
+     *
+     * For every segment S_i = (P_i -> P_{i+1}), evaluates ground elevation at P_i, midpoint M_i, and P_{i+1}.
+     * Sets segment altitude to targetAltitudeMeters + max(0, Z_max_segment - Z_poly_min).
+     * Assigns waypoint altitude H_waypoint(P_i) = max(H_segment(S_{i-1}), H_segment(S_i)).
+     */
+    suspend fun computeSegment3DAltitudes(
+        polygon: List<Coordinate>,
+        targetAltitudeMeters: Double
+    ): List<Coordinate> = withContext(Dispatchers.IO) {
+        if (polygon.size < 3) return@withContext polygon
+
+        val n = polygon.size
+        val origin = GeometryUtils.computeCentroid(polygon)
+        val cartesian = polygon.map { GeometryUtils.projectToLocalCartesian(it, origin) }
+
+        val queryPoints = mutableListOf<Coordinate>()
+        // 1. Add all vertices
+        queryPoints.addAll(polygon)
+
+        // 2. Add all segment midpoints
+        for (i in 0 until n) {
+            val p1 = cartesian[i]
+            val p2 = cartesian[(i + 1) % n]
+            val mid = Point2D((p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0)
+            queryPoints.add(GeometryUtils.projectToGeographic(mid, origin))
+        }
+
+        val elevations = getElevations(queryPoints)
+        if (elevations.size != 2 * n) {
+            return@withContext polygon.map { it.copy(altitudeMeters = targetAltitudeMeters) }
+        }
+
+        val vertexElevations = elevations.subList(0, n)
+        val midpointElevations = elevations.subList(n, 2 * n)
+
+        val minGroundElev = elevations.minOrNull() ?: 0.0
+
+        // Calculate segment flight heights
+        val segmentHeights = DoubleArray(n)
+        for (i in 0 until n) {
+            val zStart = vertexElevations[i]
+            val zMid = midpointElevations[i]
+            val zEnd = vertexElevations[(i + 1) % n]
+            val maxSegmentGround = maxOf(zStart, zMid, zEnd)
+
+            val relativeRise = maxOf(0.0, maxSegmentGround - minGroundElev)
+            segmentHeights[i] = targetAltitudeMeters + relativeRise
+        }
+
+        // Assign waypoint altitudes based on adjacent segment maximums
+        val result3D = mutableListOf<Coordinate>()
+        for (i in 0 until n) {
+            val prevSegHeight = segmentHeights[(i - 1 + n) % n]
+            val curSegHeight = segmentHeights[i]
+            val wpHeight = maxOf(prevSegHeight, curSegHeight)
+            result3D.add(polygon[i].copy(altitudeMeters = wpHeight))
+        }
+
+        result3D
+    }
+
+    /**
      * Provider #1: Open-Meteo DEM Elevation API (Global 90m/30m, fast & free batch GET)
      */
     private fun fetchBatchFromOpenMeteo(coords: List<Coordinate>): List<Double>? {

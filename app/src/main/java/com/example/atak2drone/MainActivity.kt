@@ -546,10 +546,11 @@ class MainActivity : AppCompatActivity() {
 
                         if (refinedPolygon.size != baseSubdivided.size) {
                             // Re-evaluate slopes for the adaptively refined high-density polygon
-                            activePolygon = refinedPolygon
-                            edgeSlopeFactors = fetchPerimeterEdgeSlopes(refinedPolygon)
+                            val refinedSlopes = fetchPerimeterEdgeSlopes(refinedPolygon)
+                            activePolygon = elevationProvider.computeSegment3DAltitudes(refinedPolygon, altitudeMeters)
+                            edgeSlopeFactors = refinedSlopes
                         } else {
-                            activePolygon = baseSubdivided
+                            activePolygon = elevationProvider.computeSegment3DAltitudes(baseSubdivided, altitudeMeters)
                             edgeSlopeFactors = baseSlopes
                         }
 

@@ -142,16 +142,24 @@ class WpmlBuilder(
         existing.forEach { folder.removeChild(it) }
 
         val speedStr = String.format(java.util.Locale.US, "%.1f", speedMps)
+        val defaultAltStr = String.format(java.util.Locale.US, "%.3f", speedMps) // fallback
+
         waypoints.forEachIndexed { idx, coord ->
             val clone = prototype.cloneNode(true) as Element
+            val wpAlt = coord.altitudeMeters ?: 60.96
+            val altStr = String.format(java.util.Locale.US, "%.3f", wpAlt)
 
             firstChildByLocalName(clone, KML_NS, "name")?.apply {
                 textContent = "WP ${idx + 1}"
             }
 
+            firstChildByLocalName(clone, WP_NS, "executeHeight")?.apply {
+                textContent = altStr
+            }
+
             firstChildByLocalName(clone, KML_NS, "Point")?.let { pt ->
                 firstChildByLocalName(pt, KML_NS, "coordinates")?.apply {
-                    textContent = String.format(java.util.Locale.US, "%.7f,%.7f", coord.longitude, coord.latitude)
+                    textContent = String.format(java.util.Locale.US, "%.7f,%.7f,%.3f", coord.longitude, coord.latitude, wpAlt)
                 }
             }
 

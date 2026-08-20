@@ -1,9 +1,9 @@
 # ATAK2Drone — Project State
 
 ## 1. Project Status Overview
-- **Current Version**: **v2.1.3**
-- **Current Goal**: Refine Slope-Corrected Ground Distance to Auto DEM only, add network connection tip badge, implement Mission Processing Progress Dialog, handle network DEM fetch errors with automatic fallback to flat 2D planar mode, and implement Two-Stage Adaptive Edge Subdivision (100ft baseline + 30ft steep 50%+ refinement).
-- **Current Phase**: Chunk 7 Implementation Completed & Verified with Automated Unit Test Suite.
+- **Current Version**: **v2.1.4**
+- **Current Goal**: Refine Slope-Corrected Ground Distance to Auto DEM only, add network connection tip badge, implement Mission Processing Progress Dialog, handle network DEM fetch errors with automatic fallback to flat 2D planar mode, implement Two-Stage Adaptive Edge Subdivision, and implement Segment-Maximum Terrain Height Tracking with GPS DEM Baseline.
+- **Current Phase**: Chunk 8 Implementation Completed & Verified with Automated Unit Test Suite.
 
 ## 2. Completed Steps
 - Configured Android SDK path in `local.properties` and verified JDK 17 environment.
@@ -26,9 +26,10 @@
 - Added missing `INTERNET` and `ACCESS_NETWORK_STATE` permissions to `AndroidManifest.xml` and added `User-Agent` & Open-Topo-Data fallback to `OpenElevationProvider.kt`.
 - Enforced WGS 84 datum flag (`<wpml:useGcj02>0</wpml:useGcj02>`) in `WpmlBuilder.kt` & `WpmlGenerator.kt` and forced `java.util.Locale.US` formatting across all XML floating-point coordinates to eliminate map shifts in DJI Pilot 2.
 - Implemented 100% automated Datum Conversion Protocol (`IDatumConverter`, `DatumConverter`, `SourceDatum`) supporting automatic detection and Helmert/Molodensky/GCJ02 to WGS 84 conversion behind the scenes.
-- Organized release binaries with version-labeled subfolders in `releases/archive/` (e.g., `releases/archive/v2.1.1/`) and published current v2.1.2 release binaries to `releases/current/`.
+- Organized release binaries with version-labeled subfolders in `releases/archive/` (e.g., `releases/archive/v2.1.3/`) and published current v2.1.4 release binaries to `releases/current/`.
 - Implemented Two-Stage Adaptive Edge Subdivision (`subdividePolygonEdges` 40m baseline + `refineHighSlopeSegments` 15m high-density refinement for slopes $\ge 50\%$).
-- Created `DynamicSlopeCorrectionTest.kt`, `DatumConverterTest.kt`, & `EdgeSubdivisionTest.kt` unit test suites and verified complete build & test suite (`./gradlew test` succeeded with 0 errors).
+- Implemented Segment-Maximum Terrain Height Tracking ($Z_{\text{max\_ground}}$) and dynamic 3D waypoint formatting in `OpenElevationProvider.kt`, `VertexPathStrategy.kt`, and `WpmlBuilder.kt`.
+- Created `DynamicSlopeCorrectionTest.kt`, `DatumConverterTest.kt`, `EdgeSubdivisionTest.kt`, & `SegmentHeightTrackingTest.kt` unit test suites and verified complete build & test suite (`./gradlew test` succeeded with 0 errors).
 
 ## 3. In Progress
 - Final release validation across all 4 drone variants.
@@ -48,14 +49,15 @@
 | Preserve 200ft/400ft Presets + Add Free-Type Input | Preserves rapid field deployment via 200 ft / 400 ft quick-select options while giving operators flexibility to input any custom altitude. |
 | Concentric Polygon Offset Buffer Strategy | Inset / Outset parallel edge offset with miter limit clamping allows generating multiple perimeter survey rings covering variable corridor widths. |
 | Local Tangent Slope Correction | Computes terrain elevation gradient along the normal vector perpendicular to each perimeter edge segment, scaling horizontal offsets locally ($D_i = D_{\text{ground}} \cdot \cos(\alpha_i)$) to handle changing terrain slopes throughout the flight. |
-| Two-Stage Adaptive Edge Subdivision | Stage 1 splits long straight boundaries into 40m baseline sub-segments for standard slopes (<50%), while Stage 2 adaptively re-subdivides steep slope zones (>=50%) or high-variance terrain into high-density 15m micro-segments. |
+| Two-Stage Adaptive Edge Subdivision | Stage 1 splits long straight boundaries into 100ft baseline sub-segments for standard slopes (<50%), while Stage 2 adaptively re-subdivides steep slope zones (>=50%) or high-variance terrain into high-density 30ft micro-segments. |
+| Segment-Maximum Terrain Height Tracking | Evaluates Z_max_ground along every segment and sets waypoint 3D altitudes H_waypoint = H_target + deltaZ_rise, ensuring the drone maintains at least H_target above ground everywhere along every segment without stopping. |
 | Auto DEM Only + Network Tip | Simplifies UI by removing manual slope controls while clearly informing operators that dynamic terrain slope correction requires an active network connection. |
 | Mission Processing Progress Dialog & Fallback | Displays live step status during KMZ generation and automatically falls back to standard 2D flat mission if network elevation lookup is unavailable. |
 
-## 6. Task Decomposition (Chunk 7: Two-Stage Adaptive Edge Subdivision & Steep Slope Refinement)
-- [x] Step 1: Implement `GeometryUtils.subdividePolygonEdges` (Stage 1: 40m baseline) and `refineHighSlopeSegments` (Stage 2: 15m refinement for slopes $\ge 50\%$).
-- [x] Step 2: Integrate two-stage adaptive subdivision pipeline into `MainActivity.kt` inside `fetchPerimeterEdgeSlopes`.
-- [x] Step 3: Create `EdgeSubdivisionTest.kt` unit test suite to verify baseline 40m subdivision and steep-slope (50%+) high-density 15m refinement.
-- [x] Step 4: Verify test suite (`./gradlew test`) and compile release binaries (`./gradlew assembleRelease`).
-- [x] Step 5: Bump version to `v2.1.2` (`versionCode = 5`), archive `v2.1.1` into `releases/archive/v2.1.1/`, and publish new APKs to `releases/current/`.
-- [x] Step 6: Commit and push changes to `origin/dev`.
+## 6. Task Decomposition (Chunk 8: Segment-Maximum Terrain Height Tracking & GPS DEM Baseline)
+- [x] Step 1: Update `Coordinate.kt` to support 3D coordinates (`altitudeMeters`).
+- [x] Step 2: Implement segment maximum ground elevation calculation ($Z_{\text{max\_ground}}$) and polygon baseline in `OpenElevationProvider.kt` and `MainActivity.kt`.
+- [x] Step 3: Propagate 3D altitudes across concentric perimeter rings in `VertexPathStrategy.kt`.
+- [x] Step 4: Update `WpmlBuilder.kt` to compile dynamic per-waypoint 3D altitudes into `<wpml:executeHeight>` and 3D `<coordinates>`.
+- [x] Step 5: Create `SegmentHeightTrackingTest.kt` unit test suite and verify `./gradlew test`.
+- [x] Step 6: Increment version to `v2.1.4` (`versionCode = 7`), archive `v2.1.3` to `releases/archive/v2.1.3/`, build release binaries, commit and push to `origin/dev`.

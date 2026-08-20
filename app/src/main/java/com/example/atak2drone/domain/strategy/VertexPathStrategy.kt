@@ -105,12 +105,13 @@ class VertexPathStrategy : IMissionStrategy {
         // Fallback if no rings could be computed
         val finalRings = if (rings.isEmpty()) listOf(localPolygon) else rings
 
-        // Chain rings together into a single continuous waypoint sequence
-        val chainedCartesianWaypoints = mutableListOf<Point2D>()
+        // Chain rings together into a single continuous waypoint sequence with 3D altitudes
+        val chainedWaypoints = mutableListOf<Pair<Point2D, Double?>>()
         var lastPoint: Point2D? = null
 
         for (ring in finalRings) {
             // Find vertex on this ring closest to lastPoint to minimize transition distance
+            val n = ring.size
             val startIndex = if (lastPoint != null) {
                 ring.indices.minByOrNull { ring[it].distanceTo(lastPoint!!) } ?: 0
             } else {
@@ -118,20 +119,24 @@ class VertexPathStrategy : IMissionStrategy {
             }
 
             // Add ring vertices starting from closest index, closing the loop
-            val n = ring.size
             for (i in 0 until n) {
                 val idx = (startIndex + i) % n
-                chainedCartesianWaypoints.add(ring[idx])
+                val alt = if (idx < polygon.size) polygon[idx].altitudeMeters else null
+                chainedWaypoints.add(Pair(ring[idx], alt))
             }
             // Close the ring back to the first point of this ring
-            chainedCartesianWaypoints.add(ring[startIndex])
+            val startAlt = if (startIndex < polygon.size) polygon[startIndex].altitudeMeters else null
+            chainedWaypoints.add(Pair(ring[startIndex], startAlt))
             lastPoint = ring[startIndex]
         }
 
-        // Convert Cartesian waypoints back to geographic Coordinates
-        val geographicWaypoints = chainedCartesianWaypoints.map {
-            GeometryUtils.projectToGeographic(it, origin)
+        // Convert Cartesian waypoints back to geographic Coordinates with 3D altitudes
+        val geographicWaypoints = chainedWaypoints.map { (pt, alt) ->
+            val geo = GeometryUtils.projectToGeographic(pt, origin)
+            if (alt != null) geo.copy(altitudeMeters = alt) else geo
         }
+
+        val chainedCartesianWaypoints = chainedWaypoints.map { it.first }
 
         // Compute accurate mission metrics
         var totalDistanceMeters = 0.0
