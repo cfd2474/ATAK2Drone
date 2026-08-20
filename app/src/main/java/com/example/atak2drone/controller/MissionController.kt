@@ -11,6 +11,7 @@ import com.example.atak2drone.domain.model.MissionType
 import com.example.atak2drone.domain.model.SurveyConfig
 import com.example.atak2drone.domain.strategy.MissionStrategyFactory
 import com.example.atak2drone.model.CameraType
+import com.example.atak2drone.model.Coordinate
 import com.example.atak2drone.packager.KmzPackager
 import com.example.atak2drone.parser.KmlParser
 import java.io.File
@@ -43,11 +44,12 @@ class MissionController(
         config: SurveyConfig,
         missionType: MissionType = MissionType.VERTEX_PERIMETER,
         strategy: IMissionStrategy = MissionStrategyFactory.createStrategy(missionType),
-        wpmlBuilder: IWpmlBuilder = WpmlBuilder(context)
+        wpmlBuilder: IWpmlBuilder = WpmlBuilder(context),
+        polygonOverride: List<Coordinate>? = null
     ): Result<MissionGenerationResult> {
         return runCatching {
-            // 1. Parse polygon boundary (SRP)
-            val polygon = kmlParser.parsePolygon(kmlInputStream)
+            // 1. Parse polygon boundary (or use adaptively subdivided polygon override)
+            val polygon = polygonOverride ?: kmlParser.parsePolygon(kmlInputStream)
             require(polygon.size >= 3) { "Polygon must contain at least 3 points." }
 
             // 2. Generate mission plan using pluggable strategy (OCP/LSP)

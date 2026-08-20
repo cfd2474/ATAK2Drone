@@ -523,21 +523,43 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val tmp = copyUriToTemp(kmlUri, suggestedExt = guessExtForUri(kmlUri))
-                val polygon = tmp.inputStream().use { input -> kmlParser.parsePolygon(input) }
+                val rawPolygon = tmp.inputStream().use { input -> kmlParser.parsePolygon(input) }
 
                 var effectiveSlopeMode = slopeMode
                 var edgeSlopeFactors: List<Double>? = null
+                var activePolygon = rawPolygon
 
-                if (isPerimeter && slopeMode == SlopeMode.AUTO_DEM_OPEN_SOURCE && polygon.size >= 3) {
-                    updateMissionProgressStatus("• Step 2/3: Querying open-source DEM terrain slope...")
+                if (isPerimeter && slopeMode == SlopeMode.AUTO_DEM_OPEN_SOURCE && rawPolygon.size >= 3) {
+                    updateMissionProgressStatus("• Step 2/3: Querying DEM slopes (Baseline 40m & Steep 50%+ Refinement)...")
                     try {
-                        edgeSlopeFactors = fetchPerimeterEdgeSlopes(polygon)
+                        // Stage 1: Spatial Baseline Subdivision (40m max segment)
+                        val baseSubdivided = GeometryUtils.subdividePolygonEdges(rawPolygon, maxSegmentLengthMeters = 40.0)
+                        val baseSlopes = fetchPerimeterEdgeSlopes(baseSubdivided)
+
+                        // Stage 2: Steep-Slope (>=50%) & High-Variance Refinement (15m fine segment)
+                        val refinedPolygon = GeometryUtils.refineHighSlopeSegments(
+                            polygon = baseSubdivided,
+                            slopes = baseSlopes,
+                            steepSlopeThreshold = 50.0,
+                            fineMaxSegmentLength = 15.0
+                        )
+
+                        if (refinedPolygon.size != baseSubdivided.size) {
+                            // Re-evaluate slopes for the adaptively refined high-density polygon
+                            activePolygon = refinedPolygon
+                            edgeSlopeFactors = fetchPerimeterEdgeSlopes(refinedPolygon)
+                        } else {
+                            activePolygon = baseSubdivided
+                            edgeSlopeFactors = baseSlopes
+                        }
+
                         if (edgeSlopeFactors.isEmpty()) {
                             throw IOException("Elevation query returned no slope data.")
                         }
                     } catch (e: Exception) {
                         effectiveSlopeMode = SlopeMode.OFF
                         edgeSlopeFactors = null
+                        activePolygon = rawPolygon
                         withContext(Dispatchers.Main) {
                             Toast.makeText(
                                 this@MainActivity,
@@ -565,7 +587,8 @@ class MainActivity : AppCompatActivity() {
                         context = this@MainActivity,
                         kmlInputStream = input,
                         config = config,
-                        missionType = missionType
+                        missionType = missionType,
+                        polygonOverride = if (effectiveSlopeMode == SlopeMode.AUTO_DEM_OPEN_SOURCE) activePolygon else null
                     )
                 }
 

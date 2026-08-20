@@ -4,7 +4,7 @@ This directory manages digitally signed, production-ready release builds of **AT
 
 ---
 
-## Current Release: **v2.1.1**
+## Current Release: **v2.1.2**
 
 Located in [`releases/current/`](./current/):
 
@@ -21,6 +21,12 @@ Located in [`releases/current/`](./current/):
 
 Previous release binaries are archived in subfolders labeled by version number inside [`releases/archive/`](./archive/):
 
+- **v2.1.1**: [`releases/archive/v2.1.1/`](./archive/v2.1.1/)
+  - `ATAK2M30-release.apk`
+  - `ATAK2M3T-release.apk`
+  - `ATAK2M300M350-release.apk`
+  - `ATAK2M4T-release.apk`
+
 - **v2.1.0**: [`releases/archive/v2.1.0/`](./archive/v2.1.0/)
   - `ATAK2M30-release.apk`
   - `ATAK2M3T-release.apk`
@@ -35,10 +41,10 @@ Previous release binaries are archived in subfolders labeled by version number i
 
 ---
 
-## Key Features in v2.1.1
-- **Strict Release Version Sequencing**: Incremented build version to `v2.1.1` (`versionCode = 4`), preserving version archives in `releases/archive/v2.1.0/`.
+## Key Features in v2.1.2
+- **Two-Stage Adaptive Edge Subdivision**: Stage 1 subdivides long boundary lines into $40\text{m}$ baseline sub-segments for standard terrain ($<50\%$), while Stage 2 adaptively re-subdivides steep slope zones ($\ge 50\%$) into high-density $15\text{m}$ micro-segments.
+- **Strict Release Version Sequencing**: Version bumped to `v2.1.2` (`versionCode = 5`), preserving `v2.1.1` release binaries in `releases/archive/v2.1.1/`.
 - **Dynamic User-Agent & Version Footers**: Bound application footers and DEM API User-Agent header dynamically to `BuildConfig.VERSION_NAME`.
-- **Automated Open-Source DEM Terrain Slope Correction**: Multi-tier failover (Open-Meteo DEM, Open-Topo-Data, USGS 3DEP v1) with live step progress dialog and flat 2D fallback.
 - **100% Automated Datum Conversion Protocol**: Auto-detects and transforms imported KML input coordinates (NAD83, NAD27, GCJ02) to standard WGS 84 (`<wpml:useGcj02>0</wpml:useGcj02>`) behind the scenes without user setup.
 
 ---

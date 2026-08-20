@@ -1,9 +1,9 @@
 # ATAK2Drone — Project State
 
 ## 1. Project Status Overview
-- **Current Version**: **v2.1.1**
-- **Current Goal**: Refine Slope-Corrected Ground Distance to Auto DEM only, add network connection tip badge, implement Mission Processing Progress Dialog, and handle network DEM fetch errors with automatic fallback to flat 2D planar mode.
-- **Current Phase**: Chunk 6 Implementation Completed & Verified with Automated Unit Test Suite.
+- **Current Version**: **v2.1.2**
+- **Current Goal**: Refine Slope-Corrected Ground Distance to Auto DEM only, add network connection tip badge, implement Mission Processing Progress Dialog, handle network DEM fetch errors with automatic fallback to flat 2D planar mode, and implement Two-Stage Adaptive Edge Subdivision for steep slope (>=50%) zones.
+- **Current Phase**: Chunk 7 Implementation Completed & Verified with Automated Unit Test Suite.
 
 ## 2. Completed Steps
 - Configured Android SDK path in `local.properties` and verified JDK 17 environment.
@@ -26,8 +26,9 @@
 - Added missing `INTERNET` and `ACCESS_NETWORK_STATE` permissions to `AndroidManifest.xml` and added `User-Agent` & Open-Topo-Data fallback to `OpenElevationProvider.kt`.
 - Enforced WGS 84 datum flag (`<wpml:useGcj02>0</wpml:useGcj02>`) in `WpmlBuilder.kt` & `WpmlGenerator.kt` and forced `java.util.Locale.US` formatting across all XML floating-point coordinates to eliminate map shifts in DJI Pilot 2.
 - Implemented 100% automated Datum Conversion Protocol (`IDatumConverter`, `DatumConverter`, `SourceDatum`) supporting automatic detection and Helmert/Molodensky/GCJ02 to WGS 84 conversion behind the scenes.
-- Organized release binaries with version-labeled subfolders in `releases/archive/` (e.g., `releases/archive/v2.0.2/`) and published current v2.1.0 release binaries to `releases/current/`.
-- Created `DynamicSlopeCorrectionTest.kt` & `DatumConverterTest.kt` unit test suites and verified complete build & test suite (`./gradlew test` succeeded with 0 errors).
+- Organized release binaries with version-labeled subfolders in `releases/archive/` (e.g., `releases/archive/v2.1.1/`) and published current v2.1.2 release binaries to `releases/current/`.
+- Implemented Two-Stage Adaptive Edge Subdivision (`subdividePolygonEdges` 40m baseline + `refineHighSlopeSegments` 15m high-density refinement for slopes $\ge 50\%$).
+- Created `DynamicSlopeCorrectionTest.kt`, `DatumConverterTest.kt`, & `EdgeSubdivisionTest.kt` unit test suites and verified complete build & test suite (`./gradlew test` succeeded with 0 errors).
 
 ## 3. In Progress
 - Final release validation across all 4 drone variants.
@@ -47,13 +48,14 @@
 | Preserve 200ft/400ft Presets + Add Free-Type Input | Preserves rapid field deployment via 200 ft / 400 ft quick-select options while giving operators flexibility to input any custom altitude. |
 | Concentric Polygon Offset Buffer Strategy | Inset / Outset parallel edge offset with miter limit clamping allows generating multiple perimeter survey rings covering variable corridor widths. |
 | Local Tangent Slope Correction | Computes terrain elevation gradient along the normal vector perpendicular to each perimeter edge segment, scaling horizontal offsets locally ($D_i = D_{\text{ground}} \cdot \cos(\alpha_i)$) to handle changing terrain slopes throughout the flight. |
+| Two-Stage Adaptive Edge Subdivision | Stage 1 splits long straight boundaries into 40m baseline sub-segments for standard slopes (<50%), while Stage 2 adaptively re-subdivides steep slope zones (>=50%) or high-variance terrain into high-density 15m micro-segments. |
 | Auto DEM Only + Network Tip | Simplifies UI by removing manual slope controls while clearly informing operators that dynamic terrain slope correction requires an active network connection. |
 | Mission Processing Progress Dialog & Fallback | Displays live step status during KMZ generation and automatically falls back to standard 2D flat mission if network elevation lookup is unavailable. |
 
-## 6. Task Decomposition (Chunk 6: Processing Dialog & Fallback Refinement)
-- [x] Step 1: Simplify `SlopeMode.kt`, `SurveyConfig.kt`, and `VertexPathStrategy.kt` to support `OFF` vs `AUTO_DEM_OPEN_SOURCE`.
-- [x] Step 2: Simplify `activity_main.xml` layout to remove manual slope controls, add Auto DEM check with network connection tip badge.
-- [x] Step 3: Implement Mission Processing Progress Dialog (`AlertDialog`) in `MainActivity.kt` with live step progress text.
-- [x] Step 4: Add network error catch and fallback logic in `MainActivity.kt` to revert to flat 2D planar mode when DEM fetch fails.
-- [x] Step 5: Update `DynamicSlopeCorrectionTest.kt` unit test suite to verify simplified slope modes and fallback handling.
-- [x] Step 6: Verify build (`./gradlew test assembleDebug`) and update `PROJECT_STATE.md`.
+## 6. Task Decomposition (Chunk 7: Two-Stage Adaptive Edge Subdivision & Steep Slope Refinement)
+- [x] Step 1: Implement `GeometryUtils.subdividePolygonEdges` (Stage 1: 40m baseline) and `refineHighSlopeSegments` (Stage 2: 15m refinement for slopes $\ge 50\%$).
+- [x] Step 2: Integrate two-stage adaptive subdivision pipeline into `MainActivity.kt` inside `fetchPerimeterEdgeSlopes`.
+- [x] Step 3: Create `EdgeSubdivisionTest.kt` unit test suite to verify baseline 40m subdivision and steep-slope (50%+) high-density 15m refinement.
+- [x] Step 4: Verify test suite (`./gradlew test`) and compile release binaries (`./gradlew assembleRelease`).
+- [x] Step 5: Bump version to `v2.1.2` (`versionCode = 5`), archive `v2.1.1` into `releases/archive/v2.1.1/`, and publish new APKs to `releases/current/`.
+- [x] Step 6: Commit and push changes to `origin/dev`.

@@ -368,4 +368,89 @@ object GeometryUtils {
 
         return offsetVertices
     }
+
+    /**
+     * Stage 1 Baseline Subdivision: Subdivides polygon edges longer than [maxSegmentLengthMeters]
+     * into equal baseline sub-segments. Preserves exact perimeter geometry while densifying vertices
+     * so long edges can adapt dynamically to localized terrain slope variations along their length.
+     */
+    fun subdividePolygonEdges(
+        polygon: List<Coordinate>,
+        maxSegmentLengthMeters: Double = 40.0
+    ): List<Coordinate> {
+        if (polygon.size < 3 || maxSegmentLengthMeters <= 0.0) return polygon
+
+        val origin = computeCentroid(polygon)
+        val cartesian = polygon.map { projectToLocalCartesian(it, origin) }
+        val n = cartesian.size
+        val resultCartesian = mutableListOf<Point2D>()
+
+        for (i in 0 until n) {
+            val p1 = cartesian[i]
+            val p2 = cartesian[(i + 1) % n]
+            resultCartesian.add(p1)
+
+            val edgeLen = p1.distanceTo(p2)
+            if (edgeLen > maxSegmentLengthMeters) {
+                val numSegments = ceil(edgeLen / maxSegmentLengthMeters).toInt()
+                for (k in 1 until numSegments) {
+                    val fraction = k.toDouble() / numSegments
+                    val subX = p1.x + fraction * (p2.x - p1.x)
+                    val subY = p1.y + fraction * (p2.y - p1.y)
+                    resultCartesian.add(Point2D(subX, subY))
+                }
+            }
+        }
+
+        return resultCartesian.map { projectToGeographic(it, origin) }
+    }
+
+    /**
+     * Stage 2 Steep-Slope Refinement: Identifies sub-segments with slope >= [steepSlopeThreshold]
+     * (or high slope variance) and adaptively subdivides them further into fine [fineMaxSegmentLength] sub-segments.
+     *
+     * @return Refined polygon vertices with high-density vertices in steep slope zones.
+     */
+    fun refineHighSlopeSegments(
+        polygon: List<Coordinate>,
+        slopes: List<Double>,
+        steepSlopeThreshold: Double = 50.0,
+        fineMaxSegmentLength: Double = 15.0
+    ): List<Coordinate> {
+        if (polygon.size < 3 || slopes.size != polygon.size || fineMaxSegmentLength <= 0.0) {
+            return polygon
+        }
+
+        val origin = computeCentroid(polygon)
+        val cartesian = polygon.map { projectToLocalCartesian(it, origin) }
+        val n = cartesian.size
+        val resultCartesian = mutableListOf<Point2D>()
+
+        for (i in 0 until n) {
+            val p1 = cartesian[i]
+            val p2 = cartesian[(i + 1) % n]
+            resultCartesian.add(p1)
+
+            val slope = slopes[i]
+            val prevSlope = slopes[(i - 1 + n) % n]
+            val slopeVariance = abs(slope - prevSlope)
+
+            // Trigger fine subdivision if slope >= threshold (50%) or adjacent slope variance >= 15%
+            val isSteep = slope >= steepSlopeThreshold || slopeVariance >= 15.0
+            val edgeLen = p1.distanceTo(p2)
+
+            if (isSteep && edgeLen > fineMaxSegmentLength) {
+                val numSegments = ceil(edgeLen / fineMaxSegmentLength).toInt()
+                for (k in 1 until numSegments) {
+                    val fraction = k.toDouble() / numSegments
+                    val subX = p1.x + fraction * (p2.x - p1.x)
+                    val subY = p1.y + fraction * (p2.y - p1.y)
+                    resultCartesian.add(Point2D(subX, subY))
+                }
+            }
+        }
+
+        return resultCartesian.map { projectToGeographic(it, origin) }
+    }
 }
+
