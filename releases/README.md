@@ -4,7 +4,7 @@ This directory manages digitally signed, production-ready release builds of **AT
 
 ---
 
-## Current Release: **v2.1.2**
+## Current Release: **v2.1.3**
 
 Located in [`releases/current/`](./current/):
 
@@ -20,6 +20,12 @@ Located in [`releases/current/`](./current/):
 ## Archived Releases
 
 Previous release binaries are archived in subfolders labeled by version number inside [`releases/archive/`](./archive/):
+
+- **v2.1.2**: [`releases/archive/v2.1.2/`](./archive/v2.1.2/)
+  - `ATAK2M30-release.apk`
+  - `ATAK2M3T-release.apk`
+  - `ATAK2M300M350-release.apk`
+  - `ATAK2M4T-release.apk`
 
 - **v2.1.1**: [`releases/archive/v2.1.1/`](./archive/v2.1.1/)
   - `ATAK2M30-release.apk`
@@ -41,9 +47,9 @@ Previous release binaries are archived in subfolders labeled by version number i
 
 ---
 
-## Key Features in v2.1.2
-- **Two-Stage Adaptive Edge Subdivision**: Stage 1 subdivides long boundary lines into $40\text{m}$ baseline sub-segments for standard terrain ($<50\%$), while Stage 2 adaptively re-subdivides steep slope zones ($\ge 50\%$) into high-density $15\text{m}$ micro-segments.
-- **Strict Release Version Sequencing**: Version bumped to `v2.1.2` (`versionCode = 5`), preserving `v2.1.1` release binaries in `releases/archive/v2.1.1/`.
+## Key Features in v2.1.3
+- **100ft Minimum Baseline Polygon Subdivision**: All input boundary polygons are automatically subdivided into equal sub-segments of at most **$100\text{ feet}$ ($30.48\text{ meters}$)** before elevation lookup, while steep slope zones ($\ge 50\%$) are adaptively refined to **$30\text{ feet}$ ($9.144\text{ meters}$)** micro-segments.
+- **Strict Release Version Sequencing**: Version bumped to `v2.1.3` (`versionCode = 6`), preserving `v2.1.2` release binaries in `releases/archive/v2.1.2/`.
 - **Dynamic User-Agent & Version Footers**: Bound application footers and DEM API User-Agent header dynamically to `BuildConfig.VERSION_NAME`.
 - **100% Automated Datum Conversion Protocol**: Auto-detects and transforms imported KML input coordinates (NAD83, NAD27, GCJ02) to standard WGS 84 (`<wpml:useGcj02>0</wpml:useGcj02>`) behind the scenes without user setup.
 

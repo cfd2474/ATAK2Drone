@@ -530,18 +530,18 @@ class MainActivity : AppCompatActivity() {
                 var activePolygon = rawPolygon
 
                 if (isPerimeter && slopeMode == SlopeMode.AUTO_DEM_OPEN_SOURCE && rawPolygon.size >= 3) {
-                    updateMissionProgressStatus("• Step 2/3: Querying DEM slopes (Baseline 40m & Steep 50%+ Refinement)...")
+                    updateMissionProgressStatus("• Step 2/3: Querying DEM slopes (100ft Baseline & Steep 50%+ Refinement)...")
                     try {
-                        // Stage 1: Spatial Baseline Subdivision (40m max segment)
-                        val baseSubdivided = GeometryUtils.subdividePolygonEdges(rawPolygon, maxSegmentLengthMeters = 40.0)
+                        // Stage 1: Spatial Baseline Subdivision (100ft / 30.48m max segment)
+                        val baseSubdivided = GeometryUtils.subdividePolygonEdges(rawPolygon, maxSegmentLengthMeters = 30.48)
                         val baseSlopes = fetchPerimeterEdgeSlopes(baseSubdivided)
 
-                        // Stage 2: Steep-Slope (>=50%) & High-Variance Refinement (15m fine segment)
+                        // Stage 2: Steep-Slope (>=50%) & High-Variance Refinement (30ft / 9.144m fine segment)
                         val refinedPolygon = GeometryUtils.refineHighSlopeSegments(
                             polygon = baseSubdivided,
                             slopes = baseSlopes,
                             steepSlopeThreshold = 50.0,
-                            fineMaxSegmentLength = 15.0
+                            fineMaxSegmentLength = 9.144
                         )
 
                         if (refinedPolygon.size != baseSubdivided.size) {

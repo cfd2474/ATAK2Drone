@@ -371,12 +371,12 @@ object GeometryUtils {
 
     /**
      * Stage 1 Baseline Subdivision: Subdivides polygon edges longer than [maxSegmentLengthMeters]
-     * into equal baseline sub-segments. Preserves exact perimeter geometry while densifying vertices
-     * so long edges can adapt dynamically to localized terrain slope variations along their length.
+     * (default 100 ft / 30.48 m) into equal baseline sub-segments. Preserves exact perimeter geometry
+     * while densifying vertices so long edges adapt dynamically to localized terrain slope variations along their length.
      */
     fun subdividePolygonEdges(
         polygon: List<Coordinate>,
-        maxSegmentLengthMeters: Double = 40.0
+        maxSegmentLengthMeters: Double = 30.48 // 100 ft
     ): List<Coordinate> {
         if (polygon.size < 3 || maxSegmentLengthMeters <= 0.0) return polygon
 
@@ -407,7 +407,7 @@ object GeometryUtils {
 
     /**
      * Stage 2 Steep-Slope Refinement: Identifies sub-segments with slope >= [steepSlopeThreshold]
-     * (or high slope variance) and adaptively subdivides them further into fine [fineMaxSegmentLength] sub-segments.
+     * (or high slope variance) and adaptively subdivides them further into fine [fineMaxSegmentLength] (default 30 ft / 9.144 m) sub-segments.
      *
      * @return Refined polygon vertices with high-density vertices in steep slope zones.
      */
@@ -415,7 +415,7 @@ object GeometryUtils {
         polygon: List<Coordinate>,
         slopes: List<Double>,
         steepSlopeThreshold: Double = 50.0,
-        fineMaxSegmentLength: Double = 15.0
+        fineMaxSegmentLength: Double = 9.144 // 30 ft
     ): List<Coordinate> {
         if (polygon.size < 3 || slopes.size != polygon.size || fineMaxSegmentLength <= 0.0) {
             return polygon

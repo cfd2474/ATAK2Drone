@@ -10,15 +10,14 @@ import org.junit.Test
 
 /**
  * Unit test suite verifying Two-Stage Adaptive Edge Subdivision:
- * Stage 1: Spatial baseline 40m subdivision for standard slopes (<50%)
- * Stage 2: High-density 15m refinement for steep slopes (>=50%)
+ * Stage 1: Spatial baseline 100ft (30.48m) subdivision for standard slopes (<50%)
+ * Stage 2: High-density 30ft (9.144m) refinement for steep slopes (>=50%)
  */
 class EdgeSubdivisionTest {
 
     @Test
     fun testShortPolygonEdgesRemainUnchanged() {
-        // Square with 20m edges (<40m baseline threshold)
-        val origin = Coordinate(32.715, -117.161)
+        // Square with 20m edges (<30.48m baseline threshold)
         val square = listOf(
             Coordinate(32.71500, -117.16100),
             Coordinate(32.71518, -117.16100),
@@ -26,12 +25,12 @@ class EdgeSubdivisionTest {
             Coordinate(32.71500, -117.16078)
         )
 
-        val subdivided = GeometryUtils.subdividePolygonEdges(square, maxSegmentLengthMeters = 40.0)
+        val subdivided = GeometryUtils.subdividePolygonEdges(square, maxSegmentLengthMeters = 30.48)
         assertEquals(4, subdivided.size)
     }
 
     @Test
-    fun testLongEdgeStage1BaselineSubdivision() {
+    fun testLongEdgeStage1Baseline100ftSubdivision() {
         // Polygon with one 200m edge and three 20m edges
         val polygon = listOf(
             Coordinate(32.71500, -117.16100),
@@ -40,15 +39,15 @@ class EdgeSubdivisionTest {
             Coordinate(32.71500, -117.16080)
         )
 
-        val baseSubdivided = GeometryUtils.subdividePolygonEdges(polygon, maxSegmentLengthMeters = 40.0)
+        val baseSubdivided = GeometryUtils.subdividePolygonEdges(polygon, maxSegmentLengthMeters = 30.48)
 
-        // 200m edge gets split into 5 sub-segments of 40m each (adding 4 vertices).
-        // Total vertices = 4 + 4 = 8.
-        assertTrue(baseSubdivided.size >= 8)
+        // 200m edge gets split into 7 sub-segments of <=30.48m each (adding 6 vertices).
+        // Total vertices = 4 + 6 = 10.
+        assertTrue(baseSubdivided.size >= 10)
     }
 
     @Test
-    fun testStage2SteepSlopeRefinement() {
+    fun testStage2SteepSlope30ftRefinement() {
         val polygon = listOf(
             Coordinate(32.715, -117.161),
             Coordinate(32.716, -117.161),
@@ -56,7 +55,7 @@ class EdgeSubdivisionTest {
             Coordinate(32.715, -117.160)
         )
 
-        val baseSubdivided = GeometryUtils.subdividePolygonEdges(polygon, maxSegmentLengthMeters = 40.0)
+        val baseSubdivided = GeometryUtils.subdividePolygonEdges(polygon, maxSegmentLengthMeters = 30.48)
 
         // Simulate slopes: Edge 0 has 10% slope (flat), Edge 1 has 60% slope (STEEP >= 50%)
         val slopes = MutableList(baseSubdivided.size) { 10.0 }
@@ -66,10 +65,10 @@ class EdgeSubdivisionTest {
             polygon = baseSubdivided,
             slopes = slopes,
             steepSlopeThreshold = 50.0,
-            fineMaxSegmentLength = 15.0
+            fineMaxSegmentLength = 9.144 // 30 ft
         )
 
-        // Steep edge should be further subdivided into high-density 15m segments
+        // Steep edge should be further subdivided into high-density 30ft (9.144m) segments
         assertTrue(refined.size > baseSubdivided.size)
     }
 
@@ -82,7 +81,7 @@ class EdgeSubdivisionTest {
             Coordinate(32.715, -117.160)
         )
 
-        val baseSubdivided = GeometryUtils.subdividePolygonEdges(polygon, maxSegmentLengthMeters = 40.0)
+        val baseSubdivided = GeometryUtils.subdividePolygonEdges(polygon, maxSegmentLengthMeters = 30.48)
         val slopes = MutableList(baseSubdivided.size) { 15.0 }
         slopes[0] = 55.0 // Steep slope zone
 
@@ -90,7 +89,7 @@ class EdgeSubdivisionTest {
             polygon = baseSubdivided,
             slopes = slopes,
             steepSlopeThreshold = 50.0,
-            fineMaxSegmentLength = 15.0
+            fineMaxSegmentLength = 9.144
         )
 
         val refinedSlopes = MutableList(refinedPolygon.size) { 15.0 }

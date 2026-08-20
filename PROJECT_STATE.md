@@ -1,8 +1,8 @@
 # ATAK2Drone — Project State
 
 ## 1. Project Status Overview
-- **Current Version**: **v2.1.2**
-- **Current Goal**: Refine Slope-Corrected Ground Distance to Auto DEM only, add network connection tip badge, implement Mission Processing Progress Dialog, handle network DEM fetch errors with automatic fallback to flat 2D planar mode, and implement Two-Stage Adaptive Edge Subdivision for steep slope (>=50%) zones.
+- **Current Version**: **v2.1.3**
+- **Current Goal**: Refine Slope-Corrected Ground Distance to Auto DEM only, add network connection tip badge, implement Mission Processing Progress Dialog, handle network DEM fetch errors with automatic fallback to flat 2D planar mode, and implement Two-Stage Adaptive Edge Subdivision (100ft baseline + 30ft steep 50%+ refinement).
 - **Current Phase**: Chunk 7 Implementation Completed & Verified with Automated Unit Test Suite.
 
 ## 2. Completed Steps
