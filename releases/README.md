@@ -4,7 +4,7 @@ This directory manages digitally signed, production-ready release builds of **AT
 
 ---
 
-## Current Release: **v2.1.0**
+## Current Release: **v2.1.1**
 
 Located in [`releases/current/`](./current/):
 
@@ -21,6 +21,12 @@ Located in [`releases/current/`](./current/):
 
 Previous release binaries are archived in subfolders labeled by version number inside [`releases/archive/`](./archive/):
 
+- **v2.1.0**: [`releases/archive/v2.1.0/`](./archive/v2.1.0/)
+  - `ATAK2M30-release.apk`
+  - `ATAK2M3T-release.apk`
+  - `ATAK2M300M350-release.apk`
+  - `ATAK2M4T-release.apk`
+
 - **v2.0.2**: [`releases/archive/v2.0.2/`](./archive/v2.0.2/)
   - `ATAK2M30-release.apk`
   - `ATAK2M3T-release.apk`
@@ -29,11 +35,11 @@ Previous release binaries are archived in subfolders labeled by version number i
 
 ---
 
-## Key Features in v2.1.0
-- **Automated Open-Source DEM Terrain Slope Correction**: Queries terrain elevation along flight path tangents (using Open-Meteo DEM, Open-Topo-Data, USGS 3DEP, and Open-Elevation with multi-tier failover).
+## Key Features in v2.1.1
+- **Strict Release Version Sequencing**: Incremented build version to `v2.1.1` (`versionCode = 4`), preserving version archives in `releases/archive/v2.1.0/`.
+- **Dynamic User-Agent & Version Footers**: Bound application footers and DEM API User-Agent header dynamically to `BuildConfig.VERSION_NAME`.
+- **Automated Open-Source DEM Terrain Slope Correction**: Multi-tier failover (Open-Meteo DEM, Open-Topo-Data, USGS 3DEP v1) with live step progress dialog and flat 2D fallback.
 - **100% Automated Datum Conversion Protocol**: Auto-detects and transforms imported KML input coordinates (NAD83, NAD27, GCJ02) to standard WGS 84 (`<wpml:useGcj02>0</wpml:useGcj02>`) behind the scenes without user setup.
-- **Mission Processing Progress Dialog**: Displays live status during KML parsing, DEM queries, and WPML KMZ packaging with graceful fallback to Flat 2D mission mode if offline.
-- **Area Mapping & Perimeter Survey**: Rotating Calipers minimum flight duration optimization & concentric polygon buffer offset flights.
 
 ---
 

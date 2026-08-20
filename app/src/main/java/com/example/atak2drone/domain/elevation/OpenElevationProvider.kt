@@ -27,7 +27,7 @@ class OpenElevationProvider(
         private const val OPEN_TOPO_DATA_URL = "https://api.opentopodata.org/v1/srtm30m"
         private const val USGS_ELEVATION_URL = "https://epqs.nationalmap.gov/v1/json"
         private const val OPEN_ELEVATION_URL = "https://api.open-elevation.com/api/v1/lookup"
-        private const val USER_AGENT = "ATAK2Drone/2.1.0 (Android Mobile)"
+        private val USER_AGENT = "ATAK2Drone/${com.example.atak2drone.BuildConfig.VERSION_NAME} (Android Mobile)"
         private const val CONNECT_TIMEOUT_MS = 8000
         private const val READ_TIMEOUT_MS = 8000
         private const val TAG = "OpenElevationProvider"

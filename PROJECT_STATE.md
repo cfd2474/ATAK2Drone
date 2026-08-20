@@ -1,7 +1,7 @@
 # ATAK2Drone — Project State
 
 ## 1. Project Status Overview
-- **Current Version**: **v2.1.0-dev**
+- **Current Version**: **v2.1.1**
 - **Current Goal**: Refine Slope-Corrected Ground Distance to Auto DEM only, add network connection tip badge, implement Mission Processing Progress Dialog, and handle network DEM fetch errors with automatic fallback to flat 2D planar mode.
 - **Current Phase**: Chunk 6 Implementation Completed & Verified with Automated Unit Test Suite.
 
