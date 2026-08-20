@@ -26,6 +26,7 @@
 - Added missing `INTERNET` and `ACCESS_NETWORK_STATE` permissions to `AndroidManifest.xml` and added `User-Agent` & Open-Topo-Data fallback to `OpenElevationProvider.kt`.
 - Enforced WGS 84 datum flag (`<wpml:useGcj02>0</wpml:useGcj02>`) in `WpmlBuilder.kt` & `WpmlGenerator.kt` and forced `java.util.Locale.US` formatting across all XML floating-point coordinates to eliminate map shifts in DJI Pilot 2.
 - Implemented 100% automated Datum Conversion Protocol (`IDatumConverter`, `DatumConverter`, `SourceDatum`) supporting automatic detection and Helmert/Molodensky/GCJ02 to WGS 84 conversion behind the scenes.
+- Organized release binaries with version-labeled subfolders in `releases/archive/` (e.g., `releases/archive/v2.0.2/`) and published current v2.1.0 release binaries to `releases/current/`.
 - Created `DynamicSlopeCorrectionTest.kt` & `DatumConverterTest.kt` unit test suites and verified complete build & test suite (`./gradlew test` succeeded with 0 errors).
 
 ## 3. In Progress
