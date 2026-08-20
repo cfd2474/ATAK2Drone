@@ -28,7 +28,9 @@ data class SurveyConfig(
     val cameraFovDegrees: Double = 84.0,
     val customAngleDegrees: Double? = null,
     val perimeterInteriorOffsetFt: Double = 100.0,
-    val perimeterExteriorOffsetFt: Double = 50.0
+    val perimeterExteriorOffsetFt: Double = 50.0,
+    val slopeMode: SlopeMode = SlopeMode.OFF,
+    val edgeSlopeFactors: List<Double>? = null
 ) {
     init {
         require(altitudeMeters > 0) { "Altitude must be greater than 0 meters." }
@@ -45,11 +47,8 @@ data class SurveyConfig(
         get() = perimeterExteriorOffsetFt * 0.3048
 
     /**
-     * Computes the line spacing between adjacent parallel grid / perimeter ring passes (meters)
+     * Computes line spacing between adjacent parallel grid / perimeter ring passes (meters)
      * derived from altitude and camera horizontal field of view.
-     *
-     * Line Spacing = Ground Footprint Width * (1 - Overlap Ratio)
-     * Ground Footprint Width = 2 * Altitude * tan(FOV / 2)
      */
     fun calculateLineSpacingMeters(): Double {
         val groundFootprint = 2.0 * altitudeMeters * Math.tan(Math.toRadians(cameraFovDegrees / 2.0))

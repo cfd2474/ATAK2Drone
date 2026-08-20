@@ -288,4 +288,169 @@ object GeometryUtils {
 
         return offsetVertices
     }
+
+    /**
+     * Offsets a 2D closed polygon by a list of variable per-edge offsets [offsetMetersList] in Cartesian coordinates.
+     * Each edge [i] is displaced by [offsetMetersList[i]] along its outward normal.
+     */
+    fun offsetPolygonVariable(
+        polygon: List<Point2D>,
+        offsetMetersList: List<Double>,
+        miterLimit: Double = 3.0
+    ): List<Point2D>? {
+        val n = polygon.size
+        if (n < 3 || offsetMetersList.size != n) return null
+
+        val signedArea = polygonSignedArea(polygon)
+        val ccwPolygon = if (signedArea < 0) polygon.reversed() else polygon
+        val ccwOffsets = if (signedArea < 0) offsetMetersList.reversed() else offsetMetersList
+
+        data class OffsetLine(val p1: Point2D, val p2: Point2D, val dir: Point2D, val normal: Point2D, val offset: Double)
+        val lines = ArrayList<OffsetLine>(n)
+
+        for (i in 0 until n) {
+            val p1 = ccwPolygon[i]
+            val p2 = ccwPolygon[(i + 1) % n]
+            val dx = p2.x - p1.x
+            val dy = p2.y - p1.y
+            val len = sqrt(dx * dx + dy * dy)
+            if (len < 1e-6) continue
+
+            val dir = Point2D(dx / len, dy / len)
+            val normal = Point2D(dir.y, -dir.x)
+            val offsetMeters = ccwOffsets[i]
+
+            val offP1 = Point2D(p1.x + offsetMeters * normal.x, p1.y + offsetMeters * normal.y)
+            val offP2 = Point2D(p2.x + offsetMeters * normal.x, p2.y + offsetMeters * normal.y)
+
+            lines.add(OffsetLine(offP1, offP2, dir, normal, offsetMeters))
+        }
+
+        if (lines.size < 3) return null
+
+        val offsetVertices = ArrayList<Point2D>(lines.size)
+        val lineCount = lines.size
+
+        for (i in 0 until lineCount) {
+            val prevLine = lines[(i - 1 + lineCount) % lineCount]
+            val curLine = lines[i]
+            val originalVertex = ccwPolygon[i]
+
+            val det = prevLine.dir.x * curLine.dir.y - prevLine.dir.y * curLine.dir.x
+
+            val newVertex = if (abs(det) > 1e-6) {
+                val dx = curLine.p1.x - prevLine.p1.x
+                val dy = curLine.p1.y - prevLine.p1.y
+                val t = (dx * curLine.dir.y - dy * curLine.dir.x) / det
+                val intersect = Point2D(prevLine.p1.x + t * prevLine.dir.x, prevLine.p1.y + t * prevLine.dir.y)
+
+                val avgOffset = (abs(prevLine.offset) + abs(curLine.offset)) / 2.0
+                val miterDist = intersect.distanceTo(originalVertex)
+                val maxAllowed = avgOffset * miterLimit
+                if (miterDist > maxAllowed && miterDist > 1e-6) {
+                    val scale = maxAllowed / miterDist
+                    Point2D(
+                        originalVertex.x + (intersect.x - originalVertex.x) * scale,
+                        originalVertex.y + (intersect.y - originalVertex.y) * scale
+                    )
+                } else {
+                    intersect
+                }
+            } else {
+                curLine.p1
+            }
+
+            offsetVertices.add(newVertex)
+        }
+
+        val newArea = polygonSignedArea(offsetVertices)
+        if (newArea <= 0) return null
+
+        return offsetVertices
+    }
+
+    /**
+     * Stage 1 Baseline Subdivision: Subdivides polygon edges longer than [maxSegmentLengthMeters]
+     * (default 100 ft / 30.48 m) into equal baseline sub-segments. Preserves exact perimeter geometry
+     * while densifying vertices so long edges adapt dynamically to localized terrain slope variations along their length.
+     */
+    fun subdividePolygonEdges(
+        polygon: List<Coordinate>,
+        maxSegmentLengthMeters: Double = 30.48 // 100 ft
+    ): List<Coordinate> {
+        if (polygon.size < 3 || maxSegmentLengthMeters <= 0.0) return polygon
+
+        val origin = computeCentroid(polygon)
+        val cartesian = polygon.map { projectToLocalCartesian(it, origin) }
+        val n = cartesian.size
+        val resultCartesian = mutableListOf<Point2D>()
+
+        for (i in 0 until n) {
+            val p1 = cartesian[i]
+            val p2 = cartesian[(i + 1) % n]
+            resultCartesian.add(p1)
+
+            val edgeLen = p1.distanceTo(p2)
+            if (edgeLen > maxSegmentLengthMeters) {
+                val numSegments = ceil(edgeLen / maxSegmentLengthMeters).toInt()
+                for (k in 1 until numSegments) {
+                    val fraction = k.toDouble() / numSegments
+                    val subX = p1.x + fraction * (p2.x - p1.x)
+                    val subY = p1.y + fraction * (p2.y - p1.y)
+                    resultCartesian.add(Point2D(subX, subY))
+                }
+            }
+        }
+
+        return resultCartesian.map { projectToGeographic(it, origin) }
+    }
+
+    /**
+     * Stage 2 Steep-Slope Refinement: Identifies sub-segments with slope >= [steepSlopeThreshold]
+     * (or high slope variance) and adaptively subdivides them further into fine [fineMaxSegmentLength] (default 30 ft / 9.144 m) sub-segments.
+     *
+     * @return Refined polygon vertices with high-density vertices in steep slope zones.
+     */
+    fun refineHighSlopeSegments(
+        polygon: List<Coordinate>,
+        slopes: List<Double>,
+        steepSlopeThreshold: Double = 50.0,
+        fineMaxSegmentLength: Double = 9.144 // 30 ft
+    ): List<Coordinate> {
+        if (polygon.size < 3 || slopes.size != polygon.size || fineMaxSegmentLength <= 0.0) {
+            return polygon
+        }
+
+        val origin = computeCentroid(polygon)
+        val cartesian = polygon.map { projectToLocalCartesian(it, origin) }
+        val n = cartesian.size
+        val resultCartesian = mutableListOf<Point2D>()
+
+        for (i in 0 until n) {
+            val p1 = cartesian[i]
+            val p2 = cartesian[(i + 1) % n]
+            resultCartesian.add(p1)
+
+            val slope = slopes[i]
+            val prevSlope = slopes[(i - 1 + n) % n]
+            val slopeVariance = abs(slope - prevSlope)
+
+            // Trigger fine subdivision if slope >= threshold (50%) or adjacent slope variance >= 15%
+            val isSteep = slope >= steepSlopeThreshold || slopeVariance >= 15.0
+            val edgeLen = p1.distanceTo(p2)
+
+            if (isSteep && edgeLen > fineMaxSegmentLength) {
+                val numSegments = ceil(edgeLen / fineMaxSegmentLength).toInt()
+                for (k in 1 until numSegments) {
+                    val fraction = k.toDouble() / numSegments
+                    val subX = p1.x + fraction * (p2.x - p1.x)
+                    val subY = p1.y + fraction * (p2.y - p1.y)
+                    resultCartesian.add(Point2D(subX, subY))
+                }
+            }
+        }
+
+        return resultCartesian.map { projectToGeographic(it, origin) }
+    }
 }
+

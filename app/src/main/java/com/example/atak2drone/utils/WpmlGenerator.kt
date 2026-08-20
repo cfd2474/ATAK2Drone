@@ -61,7 +61,8 @@ object WpmlGenerator {
             }
 
             // use whatever your template encodes for aircraft/payload; keep minimal tweaks
-            val h = String.format("%.3f", altitudeMeters)
+            val h = String.format(java.util.Locale.US, "%.3f", altitudeMeters)
+            setAllTexts("useGcj02", "0")
             setAllTexts("executeHeight", h)
             setAllTexts("executeHeightMode", "relativeToStartPoint")
             setAllTexts("isUseAbsoluteAltitude", "false")
@@ -125,7 +126,7 @@ object WpmlGenerator {
                 val name = doc.createElementNS(KML_NS, "name").apply { textContent = "WP ${idx + 1}" }
                 val point = doc.createElementNS(KML_NS, "Point")
                 val coords = doc.createElementNS(KML_NS, "coordinates").apply {
-                    textContent = String.format("%.7f,%.7f", lon, lat)
+                    textContent = String.format(java.util.Locale.US, "%.7f,%.7f", lon, lat)
                 }
                 point.appendChild(coords)
                 placemark.appendChild(name)
@@ -151,7 +152,7 @@ object WpmlGenerator {
             // <Point><coordinates>lon,lat[,alt]</coordinates></Point>
             firstChildByLocalName(clone, KML_NS, "Point")?.let { pt ->
                 firstChildByLocalName(pt, KML_NS, "coordinates")?.apply {
-                    textContent = String.format("%.7f,%.7f", lon, lat)
+                    textContent = String.format(java.util.Locale.US, "%.7f,%.7f", lon, lat)
                 }
             }
 
@@ -200,7 +201,7 @@ object WpmlGenerator {
         val sb = StringBuilder()
         polygon.forEach { any ->
             val (lat, lon) = readLatLon(any)
-            sb.append(String.format("  %.7f,%.7f,0\n", lon, lat))
+            sb.append(String.format(java.util.Locale.US, "  %.7f,%.7f,0\n", lon, lat))
         }
         return sb.toString().trimEnd()
     }
